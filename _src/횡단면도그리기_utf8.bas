@@ -66,6 +66,10 @@ Private gzRfil As Double, gRfilHalf As Double
 Private gNLay As Long
 Private gLayName() As String, gLayTh() As Double
 Private gLayKind() As String, gLayDisp() As String
+' [v2.4] 아래 2개는 원래 SecCalc 앞(프로시저 뒤)에 선언되어 있어
+'        Wz() 안의 gSlp 사용처에서 "변수가 정의되지 않았습니다" 가 났다.
+Private gCurK As Long
+Private gSlp As Double
 
 '────────────────────────── 2. 파라미터 ──────────────────────────
 ' [배치]
@@ -1306,9 +1310,6 @@ End Function
 Private Function Wz(ByVal z As Double) As Double
     Wz = gb0 + 2# * gSlp * (gH - z)
 End Function
-
-Private gCurK As Long
-Private gSlp As Double
 
 Private Sub SecCalc(ByVal k As Long)
     Dim D As Double, H As Double, b0 As Double

@@ -36,12 +36,24 @@ FILES = [
 ]
 
 README = """\
-상수관로 횡단면도 자동작도 - 배포 패키지 (v2.3)
+상수관로 횡단면도 자동작도 - 배포 패키지 (v2.4)
 ================================================
 
-코드는 v2.2 와 동일합니다. 이번 판은 '압축파일이 비어 보이던 문제' 만 고쳤습니다.
-(원인: 한글 파일명 + UTF-8 플래그 누락 -> Windows 탐색기가 항목을 표시하지 못함.
- 이 패키지는 파일명을 전부 영문으로 바꿔 그 문제를 없앴습니다.)
+[v2.4 에서 고친 것]
+  '컴파일 오류입니다: 변수가 정의되지 않았습니다' (gSlp 강조 표시)
+
+  원인: 아래 두 선언이 첫 프로시저(InitParams)보다 **뒤**에 있었습니다.
+            Private gCurK As Long          <- 원래 1310행
+            Private gSlp As Double         <- 원래 1311행
+        VBA 는 모듈 레벨 선언을 '첫 프로시저 이전' 에서만 인식합니다.
+        그래서 Wz() 안의 gSlp 를 미정의 변수로 판단했습니다.
+
+  수정: 두 줄을 선언부(71~72행)로 옮겼습니다. 첫 프로시저는 127행입니다.
+
+  확인 방법(임포트 후 30초):
+        Alt+F11 -> Ctrl+F -> "gSlp As Double" 검색
+        결과가 1건이고 그 줄번호가 72 근처면 정상입니다.
+        (1300번대에서 나오면 이전 파일을 임포트한 것입니다.)
 
 
 1. VBA 에 임포트할 파일
@@ -125,13 +137,13 @@ def main():
     # 1순위 : 전부 ASCII 이름 — 어떤 환경에서도 안전
     all_ok &= build(
         [(os.path.join(ROOT, s), a) for s, a, _k in FILES],
-        os.path.join(dist, "sangsu_cross_section_v2.3.zip"),
+        os.path.join(dist, "sangsu_cross_section_v2.4.zip"),
         "1순위 권장 (파일명 영문)")
 
     # 2순위 : 한글 이름 유지 (UTF-8 플래그)
     all_ok &= build(
         [(os.path.join(ROOT, s), k) for s, _a, k in FILES],
-        os.path.join(dist, "sangsu_cross_section_v2.3_ko.zip"),
+        os.path.join(dist, "sangsu_cross_section_v2.4_ko.zip"),
         "2순위 (한글 파일명, UTF-8 플래그)")
 
     if not all_ok:
