@@ -1,0 +1,2707 @@
+Attribute VB_Name = "���ܸ鵵�׸���"
+Option Explicit
+' ================== ���� ���� ==================
+Public pD() As Double, pGL() As Double, pInv() As Double, pDia() As Double
+Public pIdx() As Long, pN As Long
+Public pp() As Boolean, pFac() As String, pTx1() As String, pMeth() As String
+Public pGWL() As Double, pWR() As Double, pSR() As Double
+Public pFSeg() As String
+Public x0 As Double, xL As Double, yTblBot As Double, yTblTop As Double, yDat As Double
+Public gDatum As Double, gTopEl As Double
+Public gH As Double, gV As Double, gChain As Double, gDatum0 As Double
+Public gType As String, gSplit As Double, gLine As String, gPipe As String
+Public HX As Double, VY As Double, SC As Double, gNextX As Double, gSheetR As Double
+Public gMaxY As Double
+Public acad As Object, doc As Object, ms As Object
+Public gErr As Collection, gWarn As Collection
+
+' ================== ���� ==================
+' True : ���� 1����=1m (20m ü��=20), ���� H/V�� ����, �۾���ǥ�� H/1000��
+Const USE_M_UNIT As Boolean = True
+
+' ================== ������ ==================
+Const PICK_BASE As Boolean = True    ' True: CAD���� Ŭ���� �� = No.0 ǥ �Ʒ��� / False: 0,0
+
+' ================== ���� (���� mm ����) ==================
+Const CHECK_AN As Boolean = False
+Const AN_TOL As Double = 0.05
+Const MIN_COVER As Double = 1#
+Const COVER_RED As Boolean = False   ' True�� ���� ���� ���� ���� �۾���
+Const SLOPE_CHG As Double = 0.002    ' A�� P�� �ϳ��� ���� ���� ���
+Const EL_STEP As Double = 5#         ' ǥ�� ���� ����(m)
+Const EL_TICK As Double = 1#         ' ǥ�� ���� ĭ ����(m)
+Const GRAPH_GAP As Double = 7.5        ' ǥ ���� ~ DATUM ����
+Const SLOPE_LAB_Y As Double = 4#     ' ª�� ���� ���� ���μ�: ǥ ���� �� ����
+Const SCALE_OFF As Double = 7.5        ' ù ���� ���� ǥ���� �Ÿ�
+Const NOTE_V0 As Double = 25#
+Const NOTE_GAP As Double = 12#
+Const NOTE_TILT As Double = 15#
+Const SEC_Y As Double = 10#           ' ���� ��: DATUM ��
+Const PIPE_DIM_Y As Double = 20#     ' ���� ��: DATUM ��
+Const BAND_ARW As Double = 1.5       ' �� ȭ���� ����
+Const TICK As Double = 1.2           ' �ϴ� ǥ ���� ����
+Const TEXT_WF As Double = 0.8        ' ���� �� ����
+Const SHEET_GAP As Double = 100#
+Const R_STA As Double = 15#, R_DST As Double = 15#, R_CUM As Double = 15#
+Const R_GL As Double = 15#, R_INV As Double = 15#, R_COV As Double = 15#, R_SLP As Double = 15#
+Const HEAD_W As Double = 10#
+Const TH_HEAD As Double = 3#, TH_VAL As Double = 2.5, TH_SCALE As Double = 3#
+Const TH_SLP As Double = 2.5, TH_SEC As Double = 3#, TH_NOTE As Double = 2.5
+Const TH_TITLE As Double = 8#, TH_UTIL As Double = 2.5
+Const PI As Double = 3.14159265358979
+Const NUM_FMT As String = "#,##0.00" ' �����Ÿ���L= �� ���� (��ǥ ������ "0.00")
+Const TBL_GAP As Double = 1.1        ' �ϴ� ǥ ���� �� �ּ� ���� (���� ������ ���)
+
+' ================== ���� �ڽ� / ��ô ȭ��ǥ ==================
+Const TBOX_GAP As Double = 10#       ' ǥ ���ʼ� ~ ���� �ڽ� �����ʼ� ����
+Const TBOX_W As Double = 10#         ' ���� �ڽ� ��
+Const AXIS_DX As Double = 4#         ' ǥ ���ʼ� ~ ���� ȭ��ǥ ����
+Const AXIS_DY As Double = 3#         ' ǥ �Ʒ��� ~ ���� ȭ��ǥ ����
+Const AXIS_LV As Double = 37#        ' ���� ȭ��ǥ ����
+Const AXIS_LH As Double = 39#        ' ���� ȭ��ǥ ����
+Const AXIS_ARW As Double = 4#        ' ȭ���� ����
+Const AXIS_ARW_W As Double = 0.6     ' ȭ���� ����
+Const TH_AXIS As Double = 3#         ' V= / H= �۾� ����
+
+' ================== ���� 2�� / �ü� �� / ǥ�� ���� ==================
+Const PIPE_TWO As Boolean = True     ' True: �������� + ������ 2��
+Const FACB_ON As Boolean = True      ' �ü� ���� �� �׸���
+Const FACB_CODES As String = "IG"    ' �쿡 ���� �ü� �ڵ� (I=����, G=����)
+Const FACB_Y As Double = 30#         ' �ü� ��: DATUM �� (PIPE_DIM_Y���� ũ��)
+Const FACB_LBL_START As Boolean = True  ' True: ���� ���� ��� �ڵ� ǥ�� / False: �� ��� �ڵ�
+Const EL_BAR_W As Double = 2#        ' ǥ�� ���� ��ü ��
+
+' ================== ���̾� �� (������ ����) ==================
+Const COL_TABLE As Long = 7, COL_HEAD As Long = 3, COL_GRID As Long = 7, COL_TEXT As Long = 3
+Const COL_GL As Long = 7, COL_PIPE As Long = 2, COL_SLOPE As Long = 7, COL_SLOPE_T As Long = 3
+Const COL_SLOPE_L As Long = 1
+Const COL_DIM As Long = 7, COL_DIM_T As Long = 3, COL_DIM_M As Long = 1
+Const COL_NOTE As Long = 1, COL_NOTE_T As Long = 3, COL_FAC As Long = 6
+Const COL_GWL As Long = 5, COL_WR As Long = 30, COL_SR As Long = 6
+Const COL_UTIL As Long = 7, COL_UTIL_L As Long = 1, COL_UTIL_T As Long = 3, COL_SCALE As Long = 3
+Const COL_FACB As Long = 7, COL_FACB_M As Long = 1, COL_FACB_T As Long = 3
+
+' ===== ������� (���� ���� ��ü �˻�, ���� ����) =====
+Dim gVbN As Long                                    ' ã�� ������� ����
+Dim gVbD() As Double, gVbAng() As Double            ' �����Ÿ�, ���Ӱ�(��)
+Dim gVbDia() As Double, gVbGL() As Double           ' ����, ���ݰ�
+Dim gVbS1() As Double, gVbS2() As Double            ' ��/�� ����(%)
+Dim gVbRow() As Long                                ' ���� ���ȣ
+Dim gVcN As Long                                    ' ���� ��� ����(���ܵ� ����)
+Dim gVcD() As Double, gVcAng() As Double            ' ����: �����Ÿ�, ���Ӱ�
+Dim gVcRow() As Long, gVcNote() As String           ' ����: ������, ����
+
+Const VB_ON As Boolean = True          ' ������� ǥ��
+Const VB_SKIP_GRAV As Boolean = True   ' TYPE(F2)�� B(���)�� �ƴϸ�(�ڿ�����) ǥ�� �� ��
+Const VB_MODE As Integer = 1
+
+
+
+Const VB_DP_TOL As Double = 0.03       ' �ܼ�ȭ ������(m): �� �̳��� ������ ���� �������� ��
+Const VB_MIN_ANG As Double = 5#        ' �ּҰ���(��): �̺��� ���� ������ ǥ�� �� ��
+Const VB_CAND_MIN As Double = 1#       ' �� ���� �̻�~�ּҰ��� �̸��� ���� ��Ͽ� ���
+Const VB_A11 As Double = 16.875        ' �� ���� ���� �� 11+1/4��
+Const VB_A22 As Double = 33.75         ' �� ���� ���� �� 22+1/2��
+Const VB_A45 As Double = 67.5          ' �� ���� ���� �� 45��, �ʰ� �� 90��
+Const VB_SPLIT90 As Boolean = True     ' 90�� ����� 45�ơ�2EA�� ǥ��
+Const VB_SIMPLE As Boolean = True      ' True=�԰� ������, False=���� ���� �Բ� ǥ��
+Const VB_SAME_D As Double = 0.005      ' �� �Ÿ�(m) �̳��� ���� �������� ��
+Const VB_STEP_TOL As Double = 0.005    ' ���� ���� ������ ���̰� �� ��(m) �̳��� �ߺ� ������ ��
+Const VB_STEP_BEND As Boolean = False  ' True=���� ���� ������ ������(90��)���� ���, False=�������� ���� ����
+Const VB_LBL_FIX As Boolean = True     ' True=�� ��������(�� �ְ� ���ݰ� ����), False=�� ���� ���ݰ� ����
+Const VB_LBL_H As Double = 55#         ' ���� ���ݰ� �� �� ���μ� ���� ����(���� mm)
+Const VB_STEM As Double = 8#           ' �� ���μ� �⺻ ����(���� mm)
+Const VB_TIER_GAP As Double = 14#      ' ��ĥ �� �� ����(���� mm)
+Const VB_GAPX As Double = 1#           ' �� ���� �ּ� ���� ����(���� mm)
+Const VB_LIST As Boolean = True        ' �˻� ����� ��Ʈ�� ���
+Const VB_LIST_SH As String = "����_���"  ' ��� ��Ʈ �̸�
+Const COL_VB_L As Integer = 1          ' ������� ���⼱ ��(����)
+Const COL_VB_T As Integer = 2          ' ������� ���� ��(���)
+
+' ===== �ϴ� �������� ����ǥ =====
+Const BT_ON As Boolean = True          ' ����ǥ �׸���
+Const BT_SHEET As Boolean = True       ' True=�帶�� �� �� �׸�, False=ù �� �Ʒ� ��ü �׸�
+Const BT_DEDUP As Boolean = True       ' ���� ���������� �׸� �ߺ� ���� 1����
+Const BT_SHOW_DIA As Boolean = True    ' ��� ĭ�� ���� ǥ��(������� D160)
+Const BT_SUBTOT As Boolean = True      ' �Ұ衤�Ѱ� �� �ֱ�
+Const BT_VLV_CODES As String = "GIJURP" ' ���ǥ�� ���� F�� �ڵ�
+Const BT_TOP As Double = 20#           ' �ϴ� ǥ �Ʒ��� ~ ���ǥ ���� ����(���� mm)
+Const BT_GAP As Double = 12#           ' ���ǥ ~ ���ǥ ����(���� mm)
+Const BT_RH As Double = 7#             ' �� ����(���� mm)
+Const BT_TH As Double = 2.5            ' ǥ �۾� ����
+Const BT_TTH As Double = 3.5           ' ǥ ���� �۾� ����
+Const BT_MAXROW As Integer = 20        ' �� ���� �ִ� �� ��(������ �����ʿ� �̾� �׸�)
+Const BT_BLKGAP As Double = 10#        ' ���� ���� ����(���� mm)
+Const COL_BT_L As Integer = 7          ' ����ǥ �� ��(���)
+Const COL_BT_T As Integer = 3          ' ����ǥ ���� ��(�ʷ�)
+Const COL_BT_H As Integer = 2          ' ����ǥ ���񡤸Ӹ��ۡ��Ұ� ��(���)
+
+' ===== ��� ���� / ��� ���� ��Ģ =====
+Dim gScan0 As Long                     ' ��ó�� �˻� ���� ��ȣ(���ο�)
+Const VLV_ON As Boolean = True         ' ���⡤������ ��ȣ�� �������� �ֱ�
+Const VLV_CODES As String = "GI"       ' �������� ���� F�� �ڵ�(G=����, I=����)
+Const VLV_R As Double = 2.5            ' ��ȣ �� ������(���� mm)
+Const VLV_TRI As Double = 0.85         ' �ﰢ�� ũ��(�� ������ ���)
+Const VLV_SCL As Double = 1#           ' ���� ����(���� ���� ũ�Ⱑ �� ������ ����)
+Const VLV_DEL_OLD As Boolean = True    ' ���� �ڸ��� ���� �ü� ǥ��(PF_FAC ��)�� ����
+Const COL_VLV As Integer = 2           ' ��� ��ȣ ��(���)
+Const HB_RULE As Boolean = True        ' ��� �ֱ� ������ �Ŵ��� ��Ģ ����(90�ơ�45�ơ�2EA ��)
+
+'=== ��� �ɵ�(H=) ǥ�� ===
+Const VN_ON As Boolean = True                    ' False�� H ǥ�� �� ��
+Const VN_LGAP As Double = 1.5                    ' �� ����(���� ������ ���)
+Const VN_FMT As String = "0.00"                  ' H �Ҽ� �ڸ�
+Const VN_NAMES As String = "������,������,�������"
+Const VN_CODES As String = "G,I,J"               ' �� �̸��� ���� ����
+
+'=== ���� ���� ���� �ֱ� ��ġ�� ===
+Const ND_ON As Boolean = True                ' False�� ��ġ�� ����(����ó��)
+Const ND_TOL As Double = 0.005               ' ���� �������� �� �Ÿ� ��(m)
+Dim gNdFac As Variant, gNdTx1 As Variant     ' ���� �� ������
+Dim gNdHid As Boolean
+
+'=== ���幰 �ֱ� ����(���� ���μ�) ===
+Const UL_ON As Boolean = True                ' False�� ���� �� �׸�
+Const UL_KEY As String = "INV.EL"            ' ���幰 �ֱ� ��° ���� ã�� ����
+Const UL_PRE As Double = 0.3                 ' ���� ���� �� ����(���ڳ��� ���)
+Const UL_EXT As Double = 0.5                 ' ���� ������ �� ����(���ڳ��� ���)
+Const UL_LAYER As String = "PF_UTIL_L"       ' ���⼱�� �� ã�� �� �� ���̾�
+Const UL_MOVE_LEADER As Boolean = True       ' ���⼱ ���� ���� ���� ����
+
+
+
+
+
+
+Sub SetScale()
+    If USE_M_UNIT Then
+        HX = 1#: VY = gH / gV: SC = gH / 1000#
+    Else
+        HX = 1000# / gH: VY = 1000# / gV: SC = 1#
+    End If
+End Sub
+
+Function ConnectCAD() As Boolean
+    Dim nm, Ls, Cs, i As Long, lo As Object
+    On Error Resume Next
+    For Each nm In Array("ZWCAD.Application", "ZWCAD.Application.2025", _
+        "ZWCAD.Application.2024", "ZWCAD.Application.2023", "AutoCAD.Application")
+        Set acad = Nothing
+        Set acad = GetObject(, CStr(nm))
+        If acad Is Nothing Then Set acad = CreateObject(CStr(nm))
+        If Not acad Is Nothing Then Exit For
+    Next
+    On Error GoTo 0
+    If acad Is Nothing Then MsgBox "ZWCAD ���� ����": Exit Function
+    acad.Visible = True
+    If acad.Documents.Count = 0 Then acad.Documents.Add
+    Set doc = acad.ActiveDocument
+    Set ms = doc.ModelSpace
+    Ls = Array("PF_TABLE", "PF_HEAD", "PF_GRID", "PF_TEXT", "PF_GL", "PF_PIPE", "PF_SLOPE", "PF_SLOPE_T", _
+               "PF_SLOPE_L", "PF_DIM", "PF_DIM_T", "PF_DIM_M", "PF_NOTE", "PF_NOTE_T", "PF_FAC", _
+               "PF_GWL", "PF_WR", "PF_SR", "PF_UTIL", "PF_UTIL_L", "PF_UTIL_T", "PF_SCALE", _
+               "PF_FACB", "PF_FACB_M", "PF_FACB_T")
+    Cs = Array(COL_TABLE, COL_HEAD, COL_GRID, COL_TEXT, COL_GL, COL_PIPE, COL_SLOPE, COL_SLOPE_T, _
+               COL_SLOPE_L, COL_DIM, COL_DIM_T, COL_DIM_M, COL_NOTE, COL_NOTE_T, COL_FAC, _
+               COL_GWL, COL_WR, COL_SR, COL_UTIL, COL_UTIL_L, COL_UTIL_T, COL_SCALE, _
+               COL_FACB, COL_FACB_M, COL_FACB_T)
+    For i = 0 To UBound(Ls)
+        Set lo = Nothing
+        On Error Resume Next
+        Set lo = doc.Layers.Item(CStr(Ls(i)))
+        If lo Is Nothing Then Set lo = doc.Layers.Add(CStr(Ls(i)))
+        lo.Color = Cs(i)
+        On Error GoTo 0
+    Next
+    ConnectCAD = True
+End Function
+
+
+'2
+
+Function P3(ByVal x As Double, ByVal y As Double) As Variant
+    Dim a(2) As Double: a(0) = x: a(1) = y: P3 = a
+End Function
+
+Function Max2(ByVal a As Double, ByVal b As Double) As Double
+    If a > b Then Max2 = a Else Max2 = b
+End Function
+Function Min2(ByVal a As Double, ByVal b As Double) As Double
+    If a < b Then Min2 = a Else Min2 = b
+End Function
+
+Function PL_Line(ByVal x1 As Double, ByVal y1 As Double, ByVal x2 As Double, ByVal y2 As Double, ByVal lay As String) As Object
+    Dim o As Object
+    Set o = ms.AddLine(P3(x1, y1), P3(x2, y2)): o.Layer = lay
+    Set PL_Line = o
+End Function
+
+Function PL_Poly(xs() As Double, ys() As Double, ByVal n As Long, ByVal lay As String) As Object
+    Dim a() As Double, i As Long, o As Object
+    If n < 2 Then Exit Function
+    ReDim a(2 * n - 1)
+    For i = 0 To n - 1: a(2 * i) = xs(i): a(2 * i + 1) = ys(i): Next
+    Set o = ms.AddLightWeightPolyline(a): o.Layer = lay
+    Set PL_Poly = o
+End Function
+
+' al: 0=���ؼ����� 2=���ؼ������� 9=�߰����� 10=���߾� 11=�߰������� 13=�Ʒ����
+Function PL_Text(ByVal s As String, ByVal x As Double, ByVal y As Double, ByVal hp As Double, _
+                 ByVal lay As String, Optional ByVal al As Long = 10, Optional ByVal rotDeg As Double = 0) As Object
+    Dim o As Object
+    If Len(s) = 0 Then Exit Function
+    Set o = ms.AddText(s, P3(x, y), hp * SC)
+    o.Layer = lay
+    On Error Resume Next: o.ScaleFactor = TEXT_WF: On Error GoTo 0
+    If al <> 0 Then
+        o.Alignment = al
+        o.TextAlignmentPoint = P3(x, y)
+    End If
+    If rotDeg <> 0 Then o.Rotation = rotDeg * PI / 180#
+    Set PL_Text = o
+End Function
+
+Function PL_Circle(ByVal x As Double, ByVal y As Double, ByVal r As Double, ByVal lay As String) As Object
+    Dim o As Object: Set o = ms.AddCircle(P3(x, y), r): o.Layer = lay: Set PL_Circle = o
+End Function
+
+' Ÿ��(�Ǵ� ��Ÿ��)�� ����������: a0~a1 ����(��), 0��=������
+Function PL_Ell(ByVal cx As Double, ByVal cy As Double, ByVal rx As Double, ByVal ry As Double, _
+                ByVal a0 As Double, ByVal a1 As Double, ByVal lay As String) As Object
+    Dim n As Long, i As Long, t As Double, xs() As Double, ys() As Double
+    n = 36: ReDim xs(n), ys(n)
+    For i = 0 To n
+        t = (a0 + (a1 - a0) * i / n) * PI / 180#
+        xs(i) = cx + rx * Cos(t): ys(i) = cy + ry * Sin(t)
+    Next
+    Set PL_Ell = PL_Poly(xs, ys, n + 1, lay)
+End Function
+
+' ä�� ȭ����: ����(xt,yt), dirS=+1�̸� ������ ������(������ ����Ŵ)
+Sub PL_Tri(ByVal xt As Double, ByVal yt As Double, ByVal dirS As Double, ByVal lay As String)
+    Dim o As Object, al As Double, aW As Double, xs(3) As Double, ys(3) As Double
+    al = BAND_ARW * SC: aW = 0.3 * BAND_ARW * SC
+    On Error Resume Next
+    Set o = ms.AddSolid(P3(xt, yt), P3(xt + dirS * al, yt + aW), P3(xt + dirS * al, yt - aW), P3(xt + dirS * al, yt - aW))
+    On Error GoTo 0
+    If o Is Nothing Then
+        xs(0) = xt + dirS * al: ys(0) = yt + aW
+        xs(1) = xt: ys(1) = yt
+        xs(2) = xt + dirS * al: ys(2) = yt - aW
+        xs(3) = xs(0): ys(3) = ys(0)
+        Set o = PL_Poly(xs, ys, 4, lay)
+    Else
+        o.Layer = lay
+    End If
+End Sub
+
+Function XD(ByVal d As Double, ByVal d0 As Double) As Double
+    XD = x0 + (d - d0) * HX
+End Function
+Function YE(ByVal el As Double) As Double
+    YE = yDat + (el - gDatum) * VY
+End Function
+
+Function StaText(ByVal d As Double) As String
+    Dim n As Long, r As Double
+    n = Int((d + 0.0001) / gChain): r = d - n * gChain
+    If r < 0.005 Then StaText = "No." & n Else StaText = "No." & n & "+" & Format(r, "0.00")
+End Function
+
+' �ϴ� ǥ��: ¦�� ���� "No. 3", �߰� ���� "+ 16.40"
+Function StaTblText(ByVal d As Double) As String
+    Dim n As Long, r As Double
+    n = Int((d + 0.0001) / gChain): r = d - n * gChain
+    If r < 0.005 Then StaTblText = "No. " & n Else StaTblText = "+ " & Format(r, "0.00")
+End Function
+
+Function ParseSta(ByVal v As Variant) As Double
+    Dim s As String, p As Long
+    If IsNumeric(v) Then ParseSta = CDbl(v): Exit Function
+    s = Replace(UCase(Trim(CStr(v))), "NO.", "")
+    p = InStr(s, "+")
+    If p > 0 Then
+        ParseSta = Val(Left(s, p - 1)) * gChain + Val(Mid(s, p + 1))
+    Else
+        ParseSta = Val(s) * gChain
+    End If
+End Function
+
+' ���� �ڵ� �� ������ ǥ��
+Function MethodName(ByVal c As String) As String
+    c = UCase(Trim(c))
+    If c = "" Then MethodName = "": Exit Function
+    Select Case True
+        Case c Like "OP01-B*": MethodName = "����ȣ��"
+        Case c Like "OP01*": MethodName = "OPEN CUT(���)����"
+        Case c Like "OP02*": MethodName = "OPEN CUT(ASP)����"
+        Case c Like "OP04*": MethodName = "OPEN CUT(����)����"
+        Case c Like "OP*": MethodName = "OPEN CUT"
+        Case c Like "SC*": MethodName = "����(���)����"
+        Case c Like "GA*": MethodName = "�����븷��"
+        Case c Like "SP*": MethodName = "SHEET PILE"
+        Case c Like "HP*": MethodName = "H-PILE"
+        Case c Like "PH*": MethodName = "���Ŵޱ�"
+        Case c Like "NE*": MethodName = "����"
+        Case Else: MethodName = c
+    End Select
+End Function
+
+Function FacName(ByVal c As String) As String
+    Select Case c
+        Case "G": FacName = "������"
+        Case "I": FacName = "������"
+        Case "J": FacName = "�������"
+        Case "U": FacName = "������"
+        Case "R": FacName = "���й��"
+        Case "P": FacName = "������"
+        Case "M", "S", "E", "Z": FacName = "��Ȧ"
+        Case Else: FacName = ""
+    End Select
+End Function
+
+' ���� �� ���� (���� mm)
+Function TxtW(ByVal s As String, ByVal tH As Double) As Double
+    Dim i As Long, ch As Long, w As Double
+    For i = 1 To Len(s)
+        ch = AscW(Mid$(s, i, 1))
+        If ch < 0 Or ch > 255 Then
+            w = w + 1#
+        ElseIf ch = 32 Then
+            w = w + 0.5
+        Else
+            w = w + 0.72
+        End If
+    Next
+    TxtW = w * tH * TEXT_WF
+End Function
+
+Function SpaceOut(ByVal s As String) As String
+    Dim i As Long, r As String
+    For i = 1 To Len(s)
+        If i > 1 Then r = r & " "
+        r = r & Mid$(s, i, 1)
+    Next
+    SpaceOut = r
+End Function
+
+Sub FitParts(ByVal t As String, ByVal dia As Double, nm As String, det As String)
+    Dim ang As String
+    If t Like "����*" Or t Like "����*" Then
+        ang = Replace(Trim(Mid$(t, 3)), "-", "+")
+        If Right$(ang, 1) <> "��" Then ang = ang & "��"
+        nm = SpaceOut(Left$(t, 2) & "���")
+        det = "D=" & dia & "��" & ang
+    Else
+        nm = t: det = ""
+    End If
+End Sub
+
+
+'3
+
+Function IsRed(ByVal c As Range) As Boolean
+    IsRed = (c.Font.Color = RGB(255, 0, 0))
+End Function
+
+Function ReadData(ws As Worksheet) As Boolean
+    Dim r As Long, lastR As Long, v As Variant, i As Long, ev As String
+    Set gErr = New Collection: Set gWarn = New Collection
+    gH = Val(ws.Range("B2")): gV = Val(ws.Range("C2")): gChain = Val(ws.Range("D2"))
+    If Len(Trim(ws.Range("E2"))) = 0 Then gDatum0 = -9999 Else gDatum0 = Val(ws.Range("E2"))
+    gType = ws.Range("F2"): gSplit = Val(ws.Range("G2"))
+    gLine = ws.Range("H2"): gPipe = ws.Range("I2")
+    If gH <= 0 Or gV <= 0 Or gChain <= 0 Then gErr.Add "2�� ������(B2:D2) ����": Exit Function
+    If gSplit <= 0 Then gSplit = 1E+30
+    SetScale
+    lastR = 3
+    Do
+        v = ws.Cells(lastR + 1, 2).Value
+        If Len(Trim(CStr(v))) = 0 Or InStr(CStr(v), "����") > 0 Then Exit Do
+        lastR = lastR + 1
+    Loop
+    pN = lastR - 3
+    If pN < 2 Then gErr.Add "������ ����": Exit Function
+    ReDim pD(pN - 1), pGL(pN - 1), pInv(pN - 1), pDia(pN - 1), pIdx(pN - 1), pp(pN - 1)
+    ReDim pFac(pN - 1), pTx1(pN - 1), pMeth(pN - 1), pGWL(pN - 1), pWR(pN - 1), pSR(pN - 1)
+    For r = 4 To lastR
+        i = r - 4
+        pIdx(i) = r
+        pD(i) = ParseSta(ws.Cells(r, 2).Value)
+        pp(i) = (UCase(Trim(ws.Cells(r, 1))) = "P")
+        pFac(i) = UCase(Trim(ws.Cells(r, 6)))
+        ev = Trim(CStr(ws.Cells(r, 5).Value))
+        If IsNumeric(ev) Or ev = "" Then
+            pDia(i) = Val(ev)
+        Else
+            If pFac(i) = "" Then pFac(i) = UCase(ev)
+            If i > 0 Then pDia(i) = pDia(i - 1)
+            gWarn.Add "��" & r & ": E���� ����(" & ev & ") �� �ü��ڵ�� ó��, ������ �� �� ���"
+        End If
+        pTx1(i) = Trim(ws.Cells(r, 7))
+        pMeth(i) = Trim(ws.Cells(r, 9))
+        pGWL(i) = Val(ws.Cells(r, 17)): pWR(i) = Val(ws.Cells(r, 18)): pSR(i) = Val(ws.Cells(r, 19))
+        If i > 0 Then
+            If pD(i) < pD(i - 1) Then gErr.Add "��" & r & ": �����Ÿ� ����"
+        End If
+        If CHECK_AN And Len(ws.Cells(r, 40)) > 0 Then
+            If Abs(Val(ws.Cells(r, 40)) - pD(i) / gChain) > AN_TOL Then gWarn.Add "��" & r & ": AN ����ġ"
+        End If
+    Next
+    FillCol ws, 3, pGL
+    FillCol ws, 4, pInv
+    For i = 0 To pN - 1
+        If pDia(i) > 0 And pGL(i) > 0 And pInv(i) > 0 Then
+            If pGL(i) - pInv(i) - pDia(i) / 1000# < MIN_COVER Then _
+                gWarn.Add "��" & pIdx(i) & ": ���� ���� " & Format(pGL(i) - pInv(i) - pDia(i) / 1000#, "0.00")
+        End If
+    Next
+    ReadData = (gErr.Count = 0)
+End Function
+
+Sub FillCol(ws As Worksheet, ByVal col As Long, arr() As Double)
+    Dim i As Long, a As Long, b As Long, c As Range
+    Dim known() As Boolean: ReDim known(pN - 1)
+    For i = 0 To pN - 1
+        Set c = ws.Cells(pIdx(i), col)
+        known(i) = False
+        If Len(Trim(c.Value)) > 0 And IsNumeric(c.Value) Then
+            If Not IsRed(c) And Val(c.Value) <> 0 Then known(i) = True: arr(i) = CDbl(c.Value)
+        End If
+    Next
+    For i = 0 To pN - 1
+        If Not known(i) Then
+            a = i - 1
+            Do While a >= 0
+                If known(a) Then Exit Do
+                a = a - 1
+            Loop
+            b = i + 1
+            Do While b < pN
+                If known(b) Then Exit Do
+                b = b + 1
+            Loop
+            If a < 0 Or b >= pN Then
+                gErr.Add "��" & pIdx(i) & " " & IIf(col = 3, "C", "D") & "��: ���� �Ұ�(�ܻ�)"
+            Else
+                If pD(b) = pD(a) Then
+                    arr(i) = arr(a)
+                Else
+                    arr(i) = arr(a) + (arr(b) - arr(a)) * (pD(i) - pD(a)) / (pD(b) - pD(a))
+                End If
+                arr(i) = Round(arr(i), 2)
+                With ws.Cells(pIdx(i), col): .Value = arr(i): .Font.Color = RGB(255, 0, 0): End With
+            End If
+        End If
+    Next
+End Sub
+
+Sub WriteCheck()
+    Dim ws As Worksheet, r As Long, s As Variant
+    On Error Resume Next: Set ws = ThisWorkbook.Worksheets("����_����"): On Error GoTo 0
+    If ws Is Nothing Then
+        Set ws = ThisWorkbook.Worksheets.Add(After:=ThisWorkbook.Sheets(ThisWorkbook.Sheets.Count))
+        ws.Name = "����_����"
+    End If
+    ws.Cells.ClearContents
+    ws.Range("A1:B1").Value = Array("����", "����"): r = 2
+    For Each s In gErr: ws.Cells(r, 1) = "����": ws.Cells(r, 2) = s: r = r + 1: Next
+    For Each s In gWarn: ws.Cells(r, 1) = "���": ws.Cells(r, 2) = s: r = r + 1: Next
+    If r = 2 Then ws.Cells(2, 1) = "����"
+End Sub
+
+Function GuardSheet() As Worksheet
+    If ActiveSheet.Name = "����_����" Then
+        MsgBox "���� ������ ��Ʈ�� Ȱ��ȭ�� �� �����ϼ���.": Exit Function
+    End If
+    Set GuardSheet = ActiveSheet
+End Function
+
+Sub ����_1�ܰ�_����������()
+    Dim ws As Worksheet: Set ws = GuardSheet(): If ws Is Nothing Then Exit Sub
+    ReadData ws
+    WriteCheck
+    MsgBox "���� �Ϸ�: ���� " & gErr.Count & ", ��� " & gWarn.Count
+End Sub
+
+
+'4
+
+
+Sub ����_�۵�()
+    Dim ws As Worksheet: Set ws = GuardSheet(): If ws Is Nothing Then Exit Sub
+    If Not ReadData(ws) Then WriteCheck: MsgBox "������ �־� �ߴ��մϴ�. ����_���� ��Ʈ Ȯ��": Exit Sub
+    WriteCheck
+    If Not ConnectCAD() Then Exit Sub
+    Dim nSh As Long, k As Long, dS As Double, dE As Double, dEnd As Double
+    Dim baseX As Double, baseY As Double
+    If Not PickBase(baseX, baseY) Then Exit Sub
+    dEnd = pD(pN - 1)
+    nSh = Int((dEnd - pD(0) - 0.001) / gSplit) + 1
+    gNextX = baseX: gMaxY = baseY
+    For k = 1 To nSh
+        dS = pD(0) + (k - 1) * gSplit
+        dE = dS + gSplit: If dE > dEnd Then dE = dEnd
+        x0 = gNextX: yTblBot = baseY
+        DrawSheet ws, dS, dE, k, nSh
+        gNextX = gSheetR + (SHEET_GAP + TBOX_GAP + TBOX_W + HEAD_W + SCALE_OFF + EL_BAR_W + 30) * SC
+    Next
+    ' ���� �׸� �κ����� Ȯ��
+    On Error Resume Next
+    acad.ZoomWindow P3(baseX - (TBOX_GAP + TBOX_W + HEAD_W + SCALE_OFF + 20) * SC, baseY - (AXIS_DY + 15) * SC), _
+                    P3(gSheetR + 10 * SC, gMaxY + 10 * SC)
+    If Err.Number <> 0 Then Err.Clear: acad.ZoomExtents
+    On Error GoTo 0
+    MsgBox "�۵� �Ϸ� (" & nSh & "��)"
+End Sub
+
+' CAD ȭ�鿡�� ������ Ŭ�� (Ŭ���� = No.0 ������ ǥ �� �Ʒ���)
+Function PickBase(baseX As Double, baseY As Double) As Boolean
+    Dim pt As Variant
+    If Not PICK_BASE Then baseX = 0: baseY = 0: PickBase = True: Exit Function
+    On Error Resume Next
+    AppActivate acad.Caption
+    Err.Clear
+    pt = doc.Utility.GetPoint(, vbLf & "���� ������ Ŭ�� (No.0 ǥ �Ʒ��� ��ġ) [ESC=���]: ")
+    If Err.Number <> 0 Then
+        Err.Clear
+        On Error GoTo 0
+        AppActivate Application.Caption
+        MsgBox "������ ������ ��ҵǾ����ϴ�."
+        Exit Function
+    End If
+    On Error GoTo 0
+    baseX = pt(0): baseY = pt(1)
+    PickBase = True
+End Function
+
+Function LerpAt(arr() As Double, ByVal d As Double) As Double
+    Dim i As Long
+    For i = 1 To pN - 1
+        If pD(i) >= d Then
+            If pD(i) = pD(i - 1) Then
+                LerpAt = arr(i)
+            Else
+                LerpAt = arr(i - 1) + (arr(i) - arr(i - 1)) * (d - pD(i - 1)) / (pD(i) - pD(i - 1))
+            End If
+            Exit Function
+        End If
+    Next
+    LerpAt = arr(pN - 1)
+End Function
+
+Sub SheetPoints(ByVal dS As Double, ByVal dE As Double, sd() As Double, sg() As Double, si() As Double, _
+                sz() As Double, sx() As Long, n As Long)
+    Dim i As Long
+    n = 0: ReDim sd(pN + 1), sg(pN + 1), si(pN + 1), sz(pN + 1), sx(pN + 1)
+    If pD(0) < dS - 0.0001 Then
+        sd(0) = dS: sg(0) = LerpAt(pGL, dS): si(0) = LerpAt(pInv, dS): sz(0) = LerpAt(pDia, dS): sx(0) = -1: n = 1
+    End If
+    For i = 0 To pN - 1
+        If pD(i) >= dS - 0.0001 And pD(i) <= dE + 0.0001 Then
+            sd(n) = pD(i): sg(n) = pGL(i): si(n) = pInv(i): sz(n) = pDia(i): sx(n) = i: n = n + 1
+        End If
+    Next
+    If sd(n - 1) < dE - 0.0001 Then
+        sd(n) = dE: sg(n) = LerpAt(pGL, dE): si(n) = LerpAt(pInv, dE): sz(n) = LerpAt(pDia, dE): sx(n) = -1: n = n + 1
+    End If
+End Sub
+
+
+Sub DrawSheet(ws As Worksheet, ByVal dS As Double, ByVal dE As Double, ByVal k As Long, ByVal nSh As Long)
+    Dim sd() As Double, sg() As Double, si() As Double, sz() As Double, sx() As Long, n As Long
+    Dim i As Long, mn As Double, mx As Double, xs() As Double, ys() As Double
+    Dim xE As Double, bandTop As Double
+    SheetPoints dS, dE, sd, sg, si, sz, sx, n
+    mn = 1E+30: mx = -1E+30
+    For i = 0 To n - 1
+        If si(i) > 0 And si(i) < mn Then mn = si(i)
+        If sg(i) > 0 And sg(i) < mn Then mn = sg(i)
+        If sg(i) > mx Then mx = sg(i)
+    Next
+    ' ��(�������������ü�)�� �� �ڸ��� DATUM ���� Ȯ��
+    bandTop = PIPE_DIM_Y
+    If FACB_ON Then bandTop = Max2(PIPE_DIM_Y, FACB_Y)
+    If k = 1 And gDatum0 > -9999 And gDatum0 < mn Then
+        gDatum = gDatum0
+    Else
+        gDatum = Int((mn - (bandTop + 10) * SC / VY) / EL_STEP) * EL_STEP
+    End If
+    gTopEl = -Int(-(mx + (NOTE_V0 + NOTE_GAP * 2 + 15) * SC / VY) / EL_STEP) * EL_STEP
+    yTblTop = yTblBot + (R_STA + R_DST + R_CUM + R_GL + R_INV + R_COV + R_SLP) * SC
+    yDat = yTblTop + GRAPH_GAP * SC
+    If YE(gTopEl) > gMaxY Then gMaxY = YE(gTopEl)
+    xL = x0 - SCALE_OFF * SC
+    xE = XD(dE, dS): gSheetR = xE
+
+    DrawTable sd, sg, si, sz, n, dS, xE, k, nSh
+    ' DATUM��: No.0 ~ �� ���� (�� �Ǽ�)
+    PL_Line XD(dS, dS), yDat, xE, yDat, "PF_TABLE"
+    DrawElScale
+    ' ���ݼ�
+    ReDim xs(n - 1), ys(n - 1)
+    For i = 0 To n - 1: xs(i) = XD(sd(i), dS): ys(i) = YE(sg(i)): Next
+    PL_Poly xs, ys, n, "PF_GL"
+    ' ���μ�: �������� + ������ (���� 0�̸� ����)
+    DrawPipe2 sd, si, sz, n, dS
+    DrawStrata pGWL, "PF_GWL", dS, dE
+    DrawStrata pWR, "PF_WR", dS, dE
+    DrawStrata pSR, "PF_SR", dS, dE
+    DrawSlope sd, si, sz, sx, n, dS
+    DrawBand dS, dE, 1, yDat + SEC_Y * SC
+    DrawBand dS, dE, 2, yDat + PIPE_DIM_Y * SC
+    DrawFacBand dS, dE
+
+    ND_Hide
+    DrawNotes dS, dE, xE
+    ND_Restore
+
+    DrawVertBends dS, dE
+
+    ND_Hide True
+    DrawBomTables dS, dE
+    ND_Restore
+
+    VLV_PostSheet dS, dE
+    VN_PostSheet dS, dE
+
+    DrawUtilities ws, dS, dE
+End Sub
+
+
+
+' ���� 2��: �������� + ������(������ + ����/1000), ���� 0�̸� ����
+Sub DrawPipe2(sd() As Double, si() As Double, sz() As Double, ByVal n As Long, ByVal dS As Double)
+    Dim i As Long, m As Long, xs() As Double, ys() As Double, yt() As Double
+    ReDim xs(n), ys(n), yt(n)
+    m = 0
+    For i = 0 To n - 1
+        If sz(i) > 0 And si(i) > 0 Then
+            xs(m) = XD(sd(i), dS)
+            ys(m) = YE(si(i))
+            yt(m) = YE(si(i) + sz(i) / 1000#)
+            m = m + 1
+        Else
+            PipeFlush xs, ys, yt, m
+        End If
+    Next
+    PipeFlush xs, ys, yt, m
+End Sub
+
+Sub PipeFlush(xs() As Double, ys() As Double, yt() As Double, m As Long)
+    If m > 1 Then
+        PL_Poly xs, ys, m, "PF_PIPE"
+        If PIPE_TWO Then PL_Poly xs, yt, m, "PF_PIPE"
+    End If
+    m = 0
+End Sub
+
+' ǥ�� ����: üũ���� ���� + 5m���� ���ڿ� ����
+Sub DrawElScale()
+    Dim el As Double, s As String, w As Double, bw As Double, el0 As Double
+    bw = EL_BAR_W * SC
+    DrawElBar xL, gDatum, gTopEl
+    el0 = -Int(-gDatum / EL_STEP) * EL_STEP
+    For el = el0 To gTopEl + 0.001 Step EL_STEP
+        s = Format(el, "0.00"): w = TxtW(s, TH_SCALE) * SC
+        PL_Line xL - bw - w - 2.5 * SC, YE(el), xL - bw, YE(el), "PF_SCALE"
+        PL_Text s, xL - bw - 1.5 * SC, YE(el) + 0.7 * SC, TH_SCALE, "PF_SCALE", 2
+    Next
+End Sub
+
+' ǥ�� ����: �� �׵θ� + 1m���� ������/���� ĭ ������ ä��
+Sub DrawElBar(ByVal xR As Double, ByVal elLo As Double, ByVal elHi As Double)
+    Dim w As Double, j As Long, ea As Double, eb As Double, xc As Double
+    Dim xs(1) As Double, ys(1) As Double, o As Object
+    w = EL_BAR_W * SC
+    PL_Line xR, YE(elLo), xR, YE(elHi), "PF_TABLE"
+    PL_Line xR - w, YE(elLo), xR - w, YE(elHi), "PF_TABLE"
+    PL_Line xR - w, YE(elLo), xR, YE(elLo), "PF_TABLE"
+    PL_Line xR - w, YE(elHi), xR, YE(elHi), "PF_TABLE"
+    ea = elLo: j = 0
+    Do While ea < elHi - 0.001
+        eb = Min2(ea + EL_TICK, elHi)
+        If j Mod 2 = 0 Then xc = xR - w * 0.25 Else xc = xR - w * 0.75
+        xs(0) = xc: ys(0) = YE(ea): xs(1) = xc: ys(1) = YE(eb)
+        Set o = PL_Poly(xs, ys, 2, "PF_SCALE")
+        On Error Resume Next: o.ConstantWidth = w / 2: On Error GoTo 0
+        ea = eb: j = j + 1
+    Loop
+End Sub
+
+Sub DrawStrata(arr() As Double, ByVal lay As String, ByVal dS As Double, ByVal dE As Double)
+    Dim i As Long, m As Long, xs() As Double, ys() As Double
+    ReDim xs(pN - 1), ys(pN - 1)
+    For i = 0 To pN - 1
+        If pD(i) >= dS And pD(i) <= dE And arr(i) > 0 Then
+            xs(m) = XD(pD(i), dS): ys(m) = YE(arr(i)): m = m + 1
+        End If
+    Next
+    If m > 1 Then PL_Poly xs, ys, m, lay
+End Sub
+
+
+
+'5
+
+Sub DrawTable(sd() As Double, sg() As Double, si() As Double, sz() As Double, ByVal n As Long, _
+              ByVal dS As Double, ByVal xE As Double, ByVal k As Long, ByVal nSh As Long)
+    Dim hs, nm, j As Long, i As Long, m As Long, x As Double, cv As Double, c As Object
+    Dim yR(7) As Double, xH As Double, lastD As Double, lastI As Double
+    Dim t As String, xq As Double, tk As Double, xBr As Double, xBl As Double, tH As Double
+    Dim cx() As Double, cP() As Double, cK() As Long, cI() As Long, cGap() As Double, nc As Long
+    hs = Array(R_STA, R_DST, R_CUM, R_GL, R_INV, R_COV, R_SLP)
+    nm = Array("�� ��", "�����Ÿ�", "�����Ÿ�", "�� �� ��", "�� �� ��", "�� ��", "���α���")
+    xH = xL - HEAD_W * SC
+    yR(0) = yTblBot
+    For j = 1 To 7: yR(j) = yR(j - 1) + hs(j - 1) * SC: Next
+    ' ǥ ���μ������μ�
+    For j = 0 To 7: PL_Line xH, yR(j), xE, yR(j), "PF_TABLE": Next
+    PL_Line xH, yTblBot, xH, yTblTop, "PF_TABLE"
+    PL_Line xL, yTblBot, xL, yTblTop, "PF_TABLE"
+    PL_Line xE, yTblBot, xE, yTblTop, "PF_TABLE"
+    For j = 0 To 6
+        PL_Text CStr(nm(j)), (xH + xL) / 2, (yR(j) + yR(j + 1)) / 2, TH_HEAD, "PF_HEAD", 10, 90
+    Next
+    ' ���� �ڽ�
+    xBr = xH - TBOX_GAP * SC: xBl = xBr - TBOX_W * SC
+    DrawRect xBl, yTblBot, xBr, yTblTop, "PF_TABLE"
+    t = gLine & " ���ܸ鵵": If nSh > 1 Then t = t & " (" & k & "/" & nSh & ")"
+    PL_Text t, (xBl + xBr) / 2, (yTblBot + yTblTop) / 2, TH_TITLE, "PF_HEAD", 10, 90
+    ' V= / H= ��ô ȭ��ǥ
+    DrawAxisMark xH - AXIS_DX * SC, yTblBot - AXIS_DY * SC
+
+    ' 1) ���� �� ��� ����� + ���ݼ�(���� ���� ��ġ)
+    tH = TH_VAL * SC: tk = TICK * SC
+    ReDim cx(2 * n + 1), cP(2 * n + 1), cK(2 * n + 1), cI(2 * n + 1), cGap(2 * n + 1)
+    lastD = -1E+30: lastI = -1E+30: nc = 0
+    For i = 0 To n - 1
+        x = XD(sd(i), dS)
+        If Abs(sd(i) - lastD) >= 0.005 Then
+            ' ���� ���μ�: DATUM�� ~ ���ݼ� (ǥ�� DATUM ���̴� ���)
+            If YE(sg(i)) > yDat Then PL_Line x, yDat, x, YE(sg(i)), "PF_GRID"
+            PL_Line x, yR(0), x, yR(0) + tk, "PF_GRID"
+            For j = 1 To 5
+                PL_Line x, yR(j) - tk, x, yR(j) + tk, "PF_GRID"
+            Next
+            PL_Line x, yR(6) - tk, x, yR(6), "PF_GRID"
+            cx(nc) = x: cK(nc) = 0: cI(nc) = i
+            If lastD < -1E+29 Then cGap(nc) = 0 Else cGap(nc) = sd(i) - lastD
+            nc = nc + 1
+            lastD = sd(i): lastI = si(i)
+        ElseIf si(i) > 0 And Abs(si(i) - lastI) >= 0.005 Then
+            ' ���� ������ �ٸ� ������: �ٷ� ������ ��
+            cx(nc) = x + TBL_GAP * tH: cK(nc) = 1: cI(nc) = i
+            nc = nc + 1
+            lastI = si(i)
+        End If
+    Next
+    ' 2) ��ġ�� �ʰ� �� ��ġ ����
+    SpreadX cx, cP, nc, TBL_GAP * tH
+    ' 3) ���� ����
+    For m = 0 To nc - 1
+        i = cI(m): xq = cP(m)
+        If cK(m) = 0 Then
+            PL_Text StaTblText(sd(i)), xq, (yR(0) + yR(1)) / 2, TH_VAL, "PF_TEXT", 10, 90
+            PL_Text Format(cGap(m), "0.00"), xq, (yR(1) + yR(2)) / 2, TH_VAL, "PF_TEXT", 10, 90
+            PL_Text Format(sd(i), NUM_FMT), xq, (yR(2) + yR(3)) / 2, TH_VAL, "PF_TEXT", 10, 90
+            PL_Text Format(sg(i), "0.00"), xq, (yR(3) + yR(4)) / 2, TH_VAL, "PF_TEXT", 10, 90
+            If si(i) > 0 Then
+                PL_Text Format(si(i), "0.00"), xq, (yR(4) + yR(5)) / 2, TH_VAL, "PF_TEXT", 10, 90
+                cv = sg(i) - si(i) - sz(i) / 1000#
+                Set c = PL_Text(Format(cv, "0.00"), xq, (yR(5) + yR(6)) / 2, TH_VAL, "PF_TEXT", 10, 90)
+                If COVER_RED And cv < MIN_COVER Then c.Color = 1
+            End If
+        Else
+            PL_Text "(" & Format(si(i), "0.00") & ")", xq, (yR(4) + yR(5)) / 2, TH_VAL, "PF_TEXT", 10, 90
+            cv = sg(i) - si(i) - sz(i) / 1000#
+            Set c = PL_Text("(" & Format(cv, "0.00") & ")", xq, (yR(5) + yR(6)) / 2, TH_VAL, "PF_TEXT", 10, 90)
+            If COVER_RED And cv < MIN_COVER Then c.Color = 1
+        End If
+    Next
+End Sub
+
+
+' ���� �� ��ġ ����: ���� g���� ����� ���� ��� ���� ��ġ ����� �߽����� g ���� ��ġ
+Sub SpreadX(tX() As Double, px() As Double, ByVal n As Long, ByVal g As Double)
+    Dim gS() As Long, gE() As Long, gSum() As Double, ng As Long, i As Long, q As Long
+    Dim c1 As Long, c2 As Long, ctr1 As Double, ctr2 As Double
+    If n = 0 Then Exit Sub
+    ReDim gS(n - 1), gE(n - 1), gSum(n - 1)
+    For i = 0 To n - 1
+        gS(ng) = i: gE(ng) = i: gSum(ng) = tX(i): ng = ng + 1
+        Do While ng > 1
+            c1 = gE(ng - 1) - gS(ng - 1) + 1: ctr1 = gSum(ng - 1) / c1
+            c2 = gE(ng - 2) - gS(ng - 2) + 1: ctr2 = gSum(ng - 2) / c2
+            If (ctr1 - (c1 - 1) * g / 2) - (ctr2 + (c2 - 1) * g / 2) >= g - 0.000001 Then Exit Do
+            gE(ng - 2) = gE(ng - 1): gSum(ng - 2) = gSum(ng - 2) + gSum(ng - 1)
+            ng = ng - 1
+        Loop
+    Next
+    For q = 0 To ng - 1
+        c1 = gE(q) - gS(q) + 1: ctr1 = gSum(q) / c1
+        For i = gS(q) To gE(q)
+            px(i) = ctr1 + ((i - gS(q)) - (c1 - 1) / 2) * g
+        Next
+    Next
+End Sub
+
+' �簢��
+Sub DrawRect(ByVal x1 As Double, ByVal y1 As Double, ByVal x2 As Double, ByVal y2 As Double, ByVal lay As String)
+    Dim xs(4) As Double, ys(4) As Double
+    xs(0) = x1: ys(0) = y1: xs(1) = x2: ys(1) = y1
+    xs(2) = x2: ys(2) = y2: xs(3) = x1: ys(3) = y2
+    xs(4) = x1: ys(4) = y1
+    PL_Poly xs, ys, 5, lay
+End Sub
+
+' ��ô ȭ��ǥ: (xa,ya)���� ������ ����(V)������(H) ȭ��ǥ
+Sub DrawAxisMark(ByVal xA As Double, ByVal ya As Double)
+    Dim yTop As Double, xRt As Double
+    yTop = ya + AXIS_LV * SC
+    xRt = xA + AXIS_LH * SC
+    PL_Line xA, ya, xA, yTop, "PF_HEAD"
+    AxisArrow xA, yTop, 0, 1, "PF_HEAD"
+    PL_Line xA - 2 * SC, ya, xRt, ya, "PF_HEAD"
+    AxisArrow xRt, ya, 1, 0, "PF_HEAD"
+    PL_Text "V = " & gV, xA - 2.5 * SC, ya + 13 * SC, TH_AXIS, "PF_HEAD", 10, 90
+    PL_Text "H = " & gH, xA + 16 * SC, ya - 2.5 * SC, TH_AXIS, "PF_HEAD", 10
+End Sub
+
+' ä�� ȭ����: ����(xt,yt), ����(ux,uy)
+Sub AxisArrow(ByVal xt As Double, ByVal yt As Double, ByVal ux As Double, ByVal uy As Double, ByVal lay As String)
+    Dim L As Double, w As Double, cx As Double, cy As Double, nx As Double, ny As Double
+    Dim o As Object, xs(3) As Double, ys(3) As Double
+    L = AXIS_ARW * SC: w = AXIS_ARW_W * SC
+    cx = xt - ux * L: cy = yt - uy * L
+    nx = -uy: ny = ux
+    On Error Resume Next
+    Set o = ms.AddSolid(P3(xt, yt), P3(cx + nx * w, cy + ny * w), P3(cx - nx * w, cy - ny * w), P3(cx - nx * w, cy - ny * w))
+    On Error GoTo 0
+    If o Is Nothing Then
+        xs(0) = cx + nx * w: ys(0) = cy + ny * w
+        xs(1) = xt: ys(1) = yt
+        xs(2) = cx - nx * w: ys(2) = cy - ny * w
+        xs(3) = xs(0): ys(3) = ys(0)
+        PL_Poly xs, ys, 4, lay
+    Else
+        o.Layer = lay
+    End If
+End Sub
+
+Sub DrawSlope(sd() As Double, si() As Double, sz() As Double, sx() As Long, ByVal n As Long, ByVal dS As Double)
+    Dim bk() As Long, nb As Long, i As Long, k As Long, u As Long, hasP As Boolean, isB As Boolean
+    Dim s0 As Double, s1 As Double, yM As Double, r As Double, tH As Double, ti As Double
+    Dim uD() As Double, ux() As Double, uR() As Double, uV1() As Double, uV2() As Double, uC() As Long, nu As Long
+    Dim a As Long, b As Long, ua As Long, ub As Long, ca As Double, cb As Double, ra As Double, rb As Double
+    Dim L As Double, h As Double, t1 As String, t2 As String, wl As Double, xm As Double, yLab As Double
+    Dim x1 As Double, x2 As Double, lastR As Double, gp As Double, xq As Double
+
+    yM = yTblTop - R_SLP * SC / 2: r = R_SLP * SC * 0.42
+    tH = TH_SLP * SC: ti = TH_SLP * 0.8 * SC
+    For i = 0 To pN - 1
+        If pp(i) Then hasP = True: Exit For
+    Next
+    ' 1) ���� ������: A�� P (P�� ������ ���� ����)
+    ReDim bk(n)
+    For i = 0 To n - 1
+        isB = (i = 0 Or i = n - 1)
+        If Not isB Then
+            If hasP Then
+                If sx(i) >= 0 Then isB = pp(sx(i))
+            Else
+                If sd(i) - sd(i - 1) < 0.005 Or sd(i + 1) - sd(i) < 0.005 Then
+                    isB = True
+                Else
+                    s0 = (si(i) - si(i - 1)) / (sd(i) - sd(i - 1))
+                    s1 = (si(i + 1) - si(i)) / (sd(i + 1) - sd(i))
+                    isB = (Abs(s1 - s0) > SLOPE_CHG)
+                End If
+            End If
+            If (sz(i) > 0) <> (sz(i - 1) > 0) Or (sz(i) > 0) <> (sz(i + 1) > 0) Then isB = True
+        End If
+        If isB Then bk(nb) = i: nb = nb + 1
+    Next
+    ' 2) ������ ������ ������ (���� ���� �ִ� 2��)
+    ReDim uD(nb), ux(nb), uR(nb), uV1(nb), uV2(nb), uC(nb)
+    For k = 0 To nb - 1
+        i = bk(k)
+        If nu > 0 Then
+            If Abs(sd(i) - uD(nu - 1)) < 0.005 Then
+                If si(i) > 0 Then
+                    If uC(nu - 1) = 0 Then
+                        uV1(nu - 1) = si(i): uC(nu - 1) = 1
+                    ElseIf uC(nu - 1) = 1 And Abs(si(i) - uV1(nu - 1)) >= 0.005 Then
+                        uV2(nu - 1) = si(i): uC(nu - 1) = 2
+                    End If
+                End If
+                GoTo nextK
+            End If
+        End If
+        uD(nu) = sd(i): ux(nu) = XD(sd(i), dS): uC(nu) = 0
+        If si(i) > 0 Then uV1(nu) = si(i): uC(nu) = 1
+        nu = nu + 1
+nextK:
+    Next
+    ' 3) Ÿ�� (�̿� ���� ���ݿ� ���� �� ���, ������ ������ ��, ������ ���� ��)
+    For u = 0 To nu - 1
+        uR(u) = r
+        If u > 0 Then
+            gp = ux(u) - ux(u - 1)
+            If 0.45 * gp < uR(u) Then uR(u) = 0.45 * gp
+        End If
+        If u < nu - 1 Then
+            gp = ux(u + 1) - ux(u)
+            If 0.45 * gp < uR(u) Then uR(u) = 0.45 * gp
+        End If
+        If uC(u) = 2 Then
+            If uR(u) < 1.3 * ti Then uR(u) = 1.3 * ti
+        Else
+            If uR(u) < 0.7 * ti Then uR(u) = 0.7 * ti
+        End If
+        If uC(u) > 0 Then
+            If u = 0 Then
+                PL_Ell ux(u), yM, uR(u), r, -90, 90, "PF_SLOPE": xq = ux(u) + uR(u) * 0.45
+            ElseIf u = nu - 1 Then
+                PL_Ell ux(u), yM, uR(u), r, 90, 270, "PF_SLOPE": xq = ux(u) - uR(u) * 0.45
+            Else
+                PL_Ell ux(u), yM, uR(u), r, 0, 360, "PF_SLOPE": xq = ux(u)
+            End If
+            If uC(u) = 1 Then
+                PL_Text Format(uV1(u), "0.00"), xq, yM, TH_SLP * 0.8, "PF_SLOPE_T", 10, 90
+            Else
+                PL_Text Format(uV1(u), "0.00"), xq - 0.6 * ti, yM, TH_SLP * 0.8, "PF_SLOPE_T", 10, 90
+                PL_Text Format(uV2(u), "0.00"), xq + 0.6 * ti, yM, TH_SLP * 0.8, "PF_SLOPE_T", 10, 90
+            End If
+        End If
+    Next
+    ' 4) ���輱�� ����
+    lastR = -1E+30
+    For k = 0 To nb - 2
+        a = bk(k): b = bk(k + 1)
+        If sd(b) - sd(a) < 0.005 Then GoTo nextS
+        If sz(a) <= 0 Or si(a) <= 0 Or si(b) <= 0 Then GoTo nextS
+        ua = 0: ub = 0
+        For u = 0 To nu - 1
+            If Abs(uD(u) - sd(a)) < 0.005 Then ua = u
+            If Abs(uD(u) - sd(b)) < 0.005 Then ub = u
+        Next
+        ca = ux(ua): cb = ux(ub): ra = uR(ua): rb = uR(ub)
+        L = sd(b) - sd(a): h = si(b) - si(a)
+        If h > 0.0049 Then
+            PL_Line ca, yM - r, cb, yM + r, "PF_SLOPE"
+        ElseIf h < -0.0049 Then
+            PL_Line ca, yM + r, cb, yM - r, "PF_SLOPE"
+        ElseIf cb - rb > ca + ra Then
+            PL_Line ca + ra, yM, cb - rb, yM, "PF_SLOPE"
+        End If
+        If Abs(h) < 0.005 Then
+            t1 = "LEVEL": t2 = "L=" & Format(L, "0.00")
+        Else
+            t1 = "S=" & Format(h / L * 100#, "0.00") & "%"
+            t2 = "H=" & Format(h, "0.00") & " L=" & Format(L, "0.00")
+        End If
+        wl = Max2(TxtW(t1, TH_SLP), TxtW(t2, TH_SLP)) * SC + 1 * SC
+        If (cb - rb) - (ca + ra) > wl Then
+            xm = ((ca + ra) + (cb - rb)) / 2
+            PL_Text t1, xm, yM + r * 0.5, TH_SLP, "PF_SLOPE_T"
+            PL_Text t2, xm, yM - r * 0.5, TH_SLP, "PF_SLOPE_T"
+        Else
+            ' ª�� ����: ���� ���⼱���� ǥ ����
+            xm = (ca + cb) / 2: yLab = yTblTop + SLOPE_LAB_Y * SC
+            If xm - wl > lastR + 0.5 * SC Then
+                x1 = xm - wl: x2 = xm
+            ElseIf xm > lastR + 0.5 * SC Then
+                x1 = xm: x2 = xm + wl
+            Else
+                x1 = lastR + 0.5 * SC: x2 = x1 + wl
+            End If
+            PL_Line xm, yM, xm, yLab, "PF_SLOPE_L"
+            PL_Line Min2(xm, x1), yLab, Max2(xm, x2), yLab, "PF_SLOPE_L"
+            PL_Text t1, (x1 + x2) / 2, yLab + 0.9 * tH, TH_SLP, "PF_SLOPE_T"
+            PL_Text t2, (x1 + x2) / 2, yLab - 0.9 * tH, TH_SLP, "PF_SLOPE_T"
+            lastR = x2
+        End If
+nextS:
+    Next
+End Sub
+
+' �� ���� Ű: 1=����, 2=����, 3=�ü�(��� ���� "��ȣ|�ڵ�")
+Function SpanKey(ByVal i As Long, ByVal kind As Long) As String
+    If kind = 1 Then
+        SpanKey = MethodName(pMeth(i))
+    ElseIf kind = 3 Then
+        SpanKey = pFSeg(i)
+    ElseIf pDia(i) > 0 Then
+        SpanKey = "D" & pDia(i) & "(" & gPipe & ")"
+    Else
+        SpanKey = ""
+    End If
+End Function
+
+' ��: �� ���μ� + ��� ���� ȭ���� + �� �̸� / �Ʒ� L=
+Sub DrawBand(ByVal dS As Double, ByVal dE As Double, ByVal kind As Long, ByVal y As Double)
+    Dim i As Long, f As Long, lst As Long, a As Long, kk As String, lt As String, dn As String
+    Dim xA As Double, xB As Double, xc As Double, w As Double, tH As Double
+    Dim upR As Double, dnR As Double, n1 As String, n2 As String, p As Long, sd2 As Long
+    Dim lyL As String, lyM As String, lyT As String
+    If kind = 3 Then
+        lyL = "PF_FACB": lyM = "PF_FACB_M": lyT = "PF_FACB_T"
+    Else
+        lyL = "PF_DIM": lyM = "PF_DIM_M": lyT = "PF_DIM_T"
+    End If
+    f = -1: lst = -1
+    For i = 0 To pN - 1
+        If pD(i) >= dS - 0.0001 And pD(i) <= dE + 0.0001 Then
+            If f < 0 Then f = i
+            lst = i
+        End If
+    Next
+    If f < 0 Or lst <= f Then Exit Sub
+    tH = TH_SEC * SC: upR = -1E+30: dnR = -1E+30
+    PL_Line XD(pD(f), dS), y, XD(pD(lst), dS), y, lyL
+    a = f
+    For i = f + 1 To lst
+        If SpanKey(i, kind) <> SpanKey(a, kind) Or i = lst Then
+            kk = SpanKey(a, kind)
+            If kind = 3 Then dn = Mid$(kk, InStr(kk, "|") + 1) Else dn = kk
+            If Len(kk) > 0 And pD(i) - pD(a) > 0.005 Then
+                xA = XD(pD(a), dS): xB = XD(pD(i), dS)
+                PL_Tri xA, y, 1, lyM
+                PL_Tri xB, y, -1, lyM
+                lt = "L=" & Format(pD(i) - pD(a), NUM_FMT) & "M"
+                w = Max2(TxtW(dn, TH_SEC), TxtW(lt, TH_SEC)) * SC
+                xc = (xA + xB) / 2
+                If w + 1 * SC < xB - xA And xc - w / 2 > Max2(upR, dnR) Then
+                    PL_Text dn, xc, y + 0.9 * tH, TH_SEC, lyT
+                    PL_Text lt, xc, y - 0.9 * tH, TH_SEC, lyT
+                    upR = xc + w / 2: dnR = upR
+                Else
+                    ' ���� ����: �� �Ǵ� �Ʒ��� �ױ�
+                    p = InStr(2, dn, "(")
+                    If p > 1 And kind = 1 Then
+                        n1 = Trim$(Left$(dn, p - 1)): n2 = Mid$(dn, p)
+                    Else
+                        n1 = dn: n2 = ""
+                    End If
+                    w = Max2(Max2(TxtW(n1, TH_SEC), TxtW(n2, TH_SEC)), TxtW(lt, TH_SEC)) * SC
+                    If xc - w / 2 > upR Then
+                        sd2 = 1
+                    ElseIf xc - w / 2 > dnR Then
+                        sd2 = -1
+                    Else
+                        sd2 = 1: xc = upR + w / 2 + 1 * SC
+                    End If
+                    If sd2 = 1 Then
+                        PL_Text lt, xc, y + 0.9 * tH, TH_SEC, lyT
+                        If n2 <> "" Then
+                            PL_Text n2, xc, y + 2.3 * tH, TH_SEC, lyT
+                            PL_Text n1, xc, y + 3.7 * tH, TH_SEC, lyT
+                        Else
+                            PL_Text n1, xc, y + 2.3 * tH, TH_SEC, lyT
+                        End If
+                        upR = xc + w / 2
+                    Else
+                        PL_Text n1, xc, y - 0.9 * tH, TH_SEC, lyT
+                        If n2 <> "" Then
+                            PL_Text n2, xc, y - 2.3 * tH, TH_SEC, lyT
+                            PL_Text lt, xc, y - 3.7 * tH, TH_SEC, lyT
+                        Else
+                            PL_Text lt, xc, y - 2.3 * tH, TH_SEC, lyT
+                        End If
+                        dnR = xc + w / 2
+                    End If
+                End If
+            End If
+            a = i
+        End If
+    Next
+End Sub
+
+' �ü�(���) ���� ������: No.0~ù ��� / ���~��� / ������ ���~��
+' ó���� ������ ������ �ڵ� ���� �Ÿ���, ��� ���� ������ I �Ǵ� G ǥ��
+Function BuildFacSeg() As Boolean
+    Dim i As Long, c As String, vi() As Long, vC() As String, nV As Long, q As Long, lb() As String
+    ReDim vi(pN), vC(pN), pFSeg(pN - 1)
+    For i = 0 To pN - 1
+        c = Left$(pFac(i), 1)
+        If Len(c) > 0 Then
+            If InStr(FACB_CODES, c) > 0 Then
+                If nV > 0 Then
+                    If Abs(pD(i) - pD(vi(nV - 1))) < 0.001 Then GoTo nextV
+                End If
+                vi(nV) = i: vC(nV) = c: nV = nV + 1
+            End If
+        End If
+nextV:
+    Next
+    If nV = 0 Then Exit Function
+    ReDim lb(nV)
+    For q = 1 To nV - 1
+        If FACB_LBL_START Then lb(q) = vC(q - 1) Else lb(q) = vC(q)
+    Next
+    q = 0
+    For i = 0 To pN - 1
+        If q < nV Then
+            If i = vi(q) Then q = q + 1
+        End If
+        pFSeg(i) = q & "|" & lb(q)
+    Next
+    BuildFacSeg = True
+End Function
+
+' �ü� ���� �� (No.0����, ���������� ��� ���� ���)
+Sub DrawFacBand(ByVal dS As Double, ByVal dE As Double)
+    If Not FACB_ON Then Exit Sub
+    If Not BuildFacSeg() Then Exit Sub
+    DrawBand dS, dE, 3, yDat + FACB_Y * SC
+End Sub
+
+Sub AddNote(qX() As Double, qG() As Double, qW() As Double, qN() As String, qT() As String, qS() As String, _
+            cnt As Long, ByVal x As Double, ByVal gl As Double, ByVal nm As String, ByVal det As String, ByVal sta As String)
+    Dim w As Double
+    qX(cnt) = x: qG(cnt) = gl: qN(cnt) = nm: qT(cnt) = det: qS(cnt) = sta
+    w = TxtW(nm, TH_NOTE)
+    If TxtW(det, TH_NOTE) > w Then w = TxtW(det, TH_NOTE)
+    If TxtW(sta, TH_NOTE) > w Then w = TxtW(sta, TH_NOTE)
+    qW(cnt) = (w + 3#) * SC
+    cnt = cnt + 1
+End Sub
+
+Sub DrawNotes(ByVal dS As Double, ByVal dE As Double, ByVal xE As Double)
+    Dim cnt As Long, i As Long, j As Long, k As Long, a As Double
+    Dim qX() As Double, qG() As Double, qW() As Double, qN() As String, qT() As String, qS() As String
+    Dim nm As String, det As String, f As String, ext As Double, gMax As Double, y1 As Double, side As Double
+    ReDim qX(2 * pN), qG(2 * pN), qW(2 * pN), qN(2 * pN), qT(2 * pN), qS(2 * pN)
+    a = NOTE_TILT * PI / 180#
+    For i = 0 To pN - 1
+        If pD(i) >= dS - 0.0001 And pD(i) <= dE + 0.0001 Then
+            f = FacName(pFac(i))
+            If Len(f) > 0 Then
+                DrawFacility pFac(i), XD(pD(i), dS), YE(pInv(i) + pDia(i) / 2000#)
+                AddNote qX, qG, qW, qN, qT, qS, cnt, XD(pD(i), dS), pGL(i), f, "", StaText(pD(i))
+            End If
+            If Len(pTx1(i)) > 0 Then
+                FitParts pTx1(i), pDia(i), nm, det
+                AddNote qX, qG, qW, qN, qT, qS, cnt, XD(pD(i), dS), pGL(i), nm, det, StaText(pD(i))
+            End If
+        End If
+    Next
+    i = 0
+    Do While i < cnt
+        j = i: ext = qX(i) + qW(i) * Cos(a): gMax = qG(i)
+        Do While j + 1 < cnt
+            If qX(j + 1) > ext Then Exit Do
+            j = j + 1
+            If qX(j) + qW(j) * Cos(a) > ext Then ext = qX(j) + qW(j) * Cos(a)
+            If qG(j) > gMax Then gMax = qG(j)
+        Loop
+        For k = i To j
+            y1 = YE(gMax) + (NOTE_V0 + (j - k) * NOTE_GAP) * SC
+            If qX(k) + qW(k) * Cos(a) > xE + 10 * SC Then side = -1 Else side = 1
+            DrawLeader qX(k), YE(qG(k)), y1, qN(k), qT(k), qS(k), qW(k), side
+        Next
+        i = j + 1
+    Loop
+End Sub
+
+Sub DrawLeader(ByVal x As Double, ByVal yG As Double, ByVal y1 As Double, ByVal nm As String, _
+               ByVal det As String, ByVal sta As String, ByVal L As Double, ByVal side As Double)
+    Dim a As Double, ca As Double, sa As Double, tH As Double, ux As Double, uy As Double
+    Dim nx2 As Double, ny2 As Double, px As Double, py As Double, al As Long, rot As Double, k As Long
+    a = NOTE_TILT * PI / 180#: ca = Cos(a): sa = Sin(a): tH = TH_NOTE * SC
+    ux = side * ca: uy = sa
+    nx2 = -side * sa: ny2 = ca
+    PL_Line x, yG, x, y1, "PF_NOTE"
+    PL_Line x, y1, x + ux * L, y1 + uy * L, "PF_NOTE"
+    px = x + ux * 1# * SC: py = y1 + uy * 1# * SC
+    If side > 0 Then al = 0 Else al = 2
+    rot = side * NOTE_TILT
+    PL_Text nm, px + nx2 * 0.5 * tH, py + ny2 * 0.5 * tH, TH_NOTE, "PF_NOTE_T", al, rot
+    k = 1
+    If Len(det) > 0 Then
+        PL_Text det, px - nx2 * 1.5 * tH, py - ny2 * 1.5 * tH, TH_NOTE, "PF_NOTE_T", al, rot
+        k = 2
+    End If
+    PL_Text sta, px - nx2 * 1.5 * k * tH, py - ny2 * 1.5 * k * tH, TH_NOTE, "PF_NOTE_T", al, rot
+End Sub
+
+Sub DrawFacility(ByVal code As String, ByVal x As Double, ByVal y As Double)
+    Dim bn As String, o As Object
+    If InStr("MSEZ", code) > 0 Then bn = "MH_M" Else bn = "VLV_" & code
+    On Error Resume Next
+    Set o = ms.InsertBlock(P3(x, y), bn, SC, SC, SC, 0)
+    On Error GoTo 0
+    If o Is Nothing Then
+        PL_Circle x, y, 1.5 * SC, "PF_FAC"
+    Else
+        o.Layer = "PF_FAC"
+    End If
+End Sub
+
+Sub DrawUtilities(ws As Worksheet, ByVal dS As Double, ByVal dE As Double)
+    Dim r As Long, d As Double, inv As Double, sz As String, w As Double, h As Double, gl As Double
+    Dim x As Double, y As Double, t As String, rx As Double, ry As Double, e As Object, isBox As Boolean
+    Dim xe2 As Double, ye2 As Double, tH As Double, lb As String
+    Dim sInv As String, sSta As String, yU As Double, wMax As Double, xTx As Double
+    r = pIdx(pN - 1) + 1
+    Do While r < pIdx(pN - 1) + 30
+        If InStr(CStr(ws.Cells(r, 2)), "����") > 0 Then Exit Do
+        r = r + 1
+    Loop
+    If InStr(CStr(ws.Cells(r, 2)), "����") = 0 Then Exit Sub
+    r = r + 1
+    tH = TH_UTIL * SC
+    Do While Len(Trim(ws.Cells(r, 2))) > 0
+        d = ParseSta(ws.Cells(r, 2))
+        If d >= dS And d <= dE Then
+            sz = Replace(Trim(ws.Cells(r, 4)), "��", "*"): t = Trim(ws.Cells(r, 5))
+            gl = LerpAt(pGL, d)
+            isBox = (InStr(sz, "*") > 0)
+            If isBox Then
+                w = Val(Split(sz, "*")(0)): h = Val(Split(sz, "*")(1))
+                lb = t & " " & sz
+            Else
+                w = Val(sz) / 1000#: h = w
+                lb = t & "D" & sz
+            End If
+            inv = Val(ws.Cells(r, 3))
+            If inv = 0 Then inv = gl - 1.2 - h
+            x = XD(d, dS): y = YE(inv)
+            If isBox Then
+                DrawBox x, y, w * HX, h * VY
+            Else
+                rx = w * HX / 2: ry = h * VY / 2
+                If rx < 0.3 * SC Then rx = 0.3 * SC
+                If ry < 0.3 * SC Then ry = 0.3 * SC
+                If rx >= ry Then
+                    Set e = ms.AddEllipse(P3(x, y + ry), P3(rx, 0), ry / rx)
+                Else
+                    Set e = ms.AddEllipse(P3(x, y + ry), P3(0, ry), rx / ry)
+                End If
+                e.Layer = "PF_UTIL"
+            End If
+
+            ' �ֱ� ����
+            sInv = "INV.EL(+)" & Format(inv, "0.00")
+            sSta = StaText(d)
+            xe2 = x + 5 * SC: ye2 = y - 10 * SC
+            xTx = xe2 + 1 * SC
+            PL_Text lb, xTx, ye2, TH_UTIL, "PF_UTIL_T", 0
+            PL_Text sInv, xTx, ye2 - 1.5 * tH, TH_UTIL, "PF_UTIL_T", 0
+            PL_Text sSta, xTx, ye2 - 3# * tH, TH_UTIL, "PF_UTIL_T", 0
+
+            If UL_ON Then
+                ' �� �̸� �Ʒ� ���� ���μ� + ���⼱�� ���μ� ���� ������
+                yU = ye2 - 0.25 * tH           ' �� �̸� �ٰ� INV �� ����
+                wMax = Max2(Max2(TxtW(lb, TH_UTIL), TxtW(sInv, TH_UTIL)), TxtW(sSta, TH_UTIL)) * SC
+                PL_Line x, y, xe2, yU, "PF_UTIL_L"
+                PL_Line xe2, yU, xTx + wMax + UL_EXT * tH, yU, "PF_UTIL_L"
+            Else
+                PL_Line x, y, xe2, ye2, "PF_UTIL_L"
+            End If
+        End If
+        r = r + 1
+    Loop
+End Sub
+
+
+Sub DrawBox(ByVal x As Double, ByVal y As Double, ByVal w As Double, ByVal h As Double)
+    Dim xs(4) As Double, ys(4) As Double, k As Long, g As Double
+    For k = 0 To 1
+        g = k * 0.6 * SC
+        xs(0) = x - w / 2 + g: ys(0) = y + g
+        xs(1) = x + w / 2 - g: ys(1) = y + g
+        xs(2) = x + w / 2 - g: ys(2) = y + h - g
+        xs(3) = x - w / 2 + g: ys(3) = y + h - g
+        xs(4) = xs(0): ys(4) = ys(0)
+        PL_Poly xs, ys, 5, "PF_UTIL"
+    Next
+End Sub
+
+
+'================ ������� (���� ���� ��ü �˻�) =================
+'================ ������� (���� ���� ��ü �˻�) =================
+Sub DrawVertBends(ByVal dS As Double, ByVal dE As Double)
+    Dim tp As String
+    If Not VB_ON Then Exit Sub
+    tp = UCase(Trim(CStr(gType)))
+    If VB_SKIP_GRAV And Len(tp) > 0 And Left(tp, 1) <> "B" Then Exit Sub
+    If pN < 3 Then Exit Sub
+
+    VB_Detect                                   ' ���� ��ü �˻�
+    If dS <= pD(0) + 0.001 Then VB_WriteList    ' ù �忡�� �� ���� ���
+    If gVbN = 0 Then Exit Sub
+    VB_Layers
+
+    Dim i As Long, k As Long, j As Long, t As Long, g0 As Long, nb As Long
+    Dim idx() As Long, tR() As Long
+    Dim xs() As Double, qW() As Double, dt() As String, st() As String
+    Dim maxGL As Double, h As Double, cosT As Double, sinT As Double
+    Dim rEdge As Double, xEnd As Double, nm As String
+
+    ReDim idx(0 To gVbN), tR(0 To gVbN), xs(0 To gVbN), qW(0 To gVbN)
+    ReDim dt(0 To gVbN), st(0 To gVbN)
+
+    ' �� �忡 ���� ������� (��� ������ �� �忡 �׸�)
+    nb = 0
+    For k = 0 To gVbN - 1
+        If gVbD(k) >= dS - 0.001 And gVbD(k) < dE - 0.001 Then
+            idx(nb) = k
+            nb = nb + 1
+        End If
+    Next k
+    If nb = 0 Then Exit Sub
+
+    maxGL = -1E+30
+    For i = 0 To pN - 1
+        If pD(i) >= dS - 0.001 And pD(i) <= dE + 0.001 Then
+            If pGL(i) > maxGL Then maxGL = pGL(i)
+        End If
+    Next i
+
+    h = TH_NOTE * SC
+    cosT = Cos(NOTE_TILT * PI / 180#)
+    sinT = Sin(NOTE_TILT * PI / 180#)
+    xEnd = XD(dE, dS)
+    nm = "�� �� �� ��"
+
+    For j = 0 To nb - 1
+        k = idx(j)
+        xs(j) = XD(gVbD(k), dS)
+        dt(j) = "D=" & Format(gVbDia(k), "0") & "��" & VB_Spec(gVbAng(k))
+        If Not VB_SIMPLE Then dt(j) = dt(j) & " (" & Format(gVbAng(k), "0.0") & "��)"
+        st(j) = VB_Sta(gVbD(k))
+        qW(j) = (Max2(VB_TW(nm), Max2(VB_TW(dt(j)), VB_TW(st(j)))) + 2#) * h
+    Next j
+
+    ' ��ġ�� �� ����: �� ������ ��, �� ������ �Ʒ�
+    j = 0
+    Do While j < nb
+        g0 = j
+        rEdge = xs(j) + qW(j) * cosT
+        Do While j + 1 < nb
+            If xs(j + 1) < rEdge + VB_GAPX * SC Then
+                j = j + 1
+                rEdge = Max2(rEdge, xs(j) + qW(j) * cosT)
+            Else
+                Exit Do
+            End If
+        Loop
+        For t = g0 To j
+            tR(t) = j - t
+        Next t
+        j = j + 1
+    Loop
+
+    Dim yB As Double, y1 As Double, x2 As Double, y2 As Double, rt As Double
+    Dim sx As Double, sy As Double, ux As Double, uy As Double, nx As Double, ny As Double
+
+    For j = 0 To nb - 1
+        k = idx(j)
+        If VB_LBL_FIX Then
+            yB = YE(maxGL) + VB_LBL_H * SC
+        Else
+            yB = YE(gVbGL(k)) + VB_LBL_H * SC
+        End If
+        y1 = yB + (VB_STEM + tR(j) * VB_TIER_GAP) * SC
+
+        VB_Line xs(j), yB, xs(j), y1, "PF_VBEND"
+
+        If xs(j) + qW(j) * cosT > xEnd + 10# * SC Then
+            rt = -NOTE_TILT * PI / 180#          ' ������ ��: ���ʡ��ð����
+            x2 = xs(j) - qW(j) * cosT
+            y2 = y1 + qW(j) * sinT
+            sx = x2: sy = y2
+        Else
+            rt = NOTE_TILT * PI / 180#           ' �����ʡ��ݽð����
+            x2 = xs(j) + qW(j) * cosT
+            y2 = y1 + qW(j) * sinT
+            sx = xs(j): sy = y1
+        End If
+        VB_Line xs(j), y1, x2, y2, "PF_VBEND"
+
+        ux = Cos(rt): uy = Sin(rt)
+        nx = -Sin(rt): ny = Cos(rt)
+        sx = sx + ux * 1# * SC
+        sy = sy + uy * 1# * SC
+
+        VB_Text nm, sx + nx * 0.6 * h, sy + ny * 0.6 * h, h, rt, "PF_VBEND_T"
+        VB_Text dt(j), sx - nx * 1.6 * h, sy - ny * 1.6 * h, h, rt, "PF_VBEND_T"
+        VB_Text st(j), sx - nx * 3.2 * h, sy - ny * 3.2 * h, h, rt, "PF_VBEND_T"
+    Next j
+End Sub
+
+
+' ���� ��ü���� ������� ��ġ ã�� (���� ǥ�����Ÿ�, ���� ���� ����)
+Sub VB_Detect()
+    Dim i As Long, m As Long, ok As Boolean
+    Dim vd() As Double, vi() As Double, vk() As Long
+    Dim vp() As Boolean, vu() As Boolean
+
+    gVbN = 0: gVcN = 0
+    If pN < 3 Then Exit Sub
+    ReDim gVbD(0 To pN), gVbAng(0 To pN), gVbDia(0 To pN), gVbGL(0 To pN)
+    ReDim gVbS1(0 To pN), gVbS2(0 To pN), gVbRow(0 To pN)
+    ReDim gVcD(0 To pN), gVcAng(0 To pN), gVcRow(0 To pN), gVcNote(0 To pN)
+    ReDim vd(0 To pN), vi(0 To pN), vk(0 To pN), vp(0 To pN), vu(0 To pN)
+
+    m = 0
+    For i = 0 To pN - 1
+        ok = (pDia(i) > 0 And pInv(i) > 0)
+        If Not ok Then
+            VB_Run vd, vi, vk, vp, vu, m          ' ���� ���� �� ������� ���
+            m = 0
+        Else
+            If m > 0 Then
+                If Abs(pD(i) - vd(m - 1)) < VB_SAME_D Then
+                    If Abs(pInv(i) - vi(m - 1)) < VB_STEP_TOL Then
+                        ' ���� ���� �ߺ� ��: �ϳ��� ġ�� Pǥ�á�G�� �Է¸� ��ħ
+                        If VB_IsP(i) Then vp(m - 1) = True
+                        If InStr(CStr(pTx1(i)), "����") > 0 Then vu(m - 1) = True
+                        GoTo nextV
+                    End If
+                    If Not VB_STEP_BEND Then      ' ���� �� ���� ����
+                        VB_Run vd, vi, vk, vp, vu, m
+                        m = 0
+                    End If
+                End If
+            End If
+            vd(m) = pD(i): vi(m) = pInv(i): vk(m) = i
+            vp(m) = VB_IsP(i)
+            vu(m) = (InStr(CStr(pTx1(i)), "����") > 0)
+            m = m + 1
+        End If
+nextV:
+    Next i
+    VB_Run vd, vi, vk, vp, vu, m
+End Sub
+
+' �̾��� ���� �� ����: ������ ������ �� ���Ӱ� ���
+Sub VB_Run(vd() As Double, vi() As Double, vk() As Long, vp() As Boolean, vu() As Boolean, ByVal m As Long)
+    Dim keep() As Boolean, j As Long, nP As Long, a As Long, b As Long
+    If m < 3 Then Exit Sub
+    ReDim keep(0 To m - 1)
+    keep(0) = True: keep(m - 1) = True
+
+    nP = 0
+    If VB_MODE = 1 Then
+        For j = 1 To m - 2
+            If vp(j) Then keep(j) = True: nP = nP + 1
+        Next j
+    End If
+    If nP = 0 Then VB_DP vd, vi, keep, 0, m - 1   ' P�� ���� �� �ݿø� ���� ���� �� ���� ����
+
+    a = 0: b = -1
+    For j = 1 To m - 1
+        If keep(j) Then
+            If b < 0 Then
+                b = j
+            Else
+                VB_Add vd, vi, vk, vu, a, b, j
+                a = b: b = j
+            End If
+        End If
+    Next j
+End Sub
+
+' ������ b���� ���� ��� �� ��Ͽ� �߰�
+Sub VB_Add(vd() As Double, vi() As Double, vk() As Long, vu() As Boolean, _
+           ByVal a As Long, ByVal b As Long, ByVal c As Long)
+    Dim dx1 As Double, dy1 As Double, dx2 As Double, dy2 As Double, ang As Double
+    dx1 = vd(b) - vd(a): dy1 = vi(b) - vi(a)
+    dx2 = vd(c) - vd(b): dy2 = vi(c) - vi(b)
+    ang = Abs(VB_Atan2(dy2, dx2) - VB_Atan2(dy1, dx1)) * 180# / PI
+    If ang > 180# Then ang = 360# - ang
+
+    If vu(b) Then                                   ' G�� ���� �Է� �켱
+        VB_AddRef vd(b), ang, pIdx(vk(b)), "G�� ���� �Է�(�ڵ� ǥ�� �� ��)"
+        Exit Sub
+    End If
+    If ang < VB_MIN_ANG Then
+        If ang >= VB_CAND_MIN Then VB_AddRef vd(b), ang, pIdx(vk(b)), "�ּҰ��� �̸� ����"
+        Exit Sub
+    End If
+
+    gVbD(gVbN) = vd(b)
+    gVbAng(gVbN) = ang
+    gVbDia(gVbN) = pDia(vk(b))
+    gVbGL(gVbN) = pGL(vk(b))
+    gVbRow(gVbN) = pIdx(vk(b))
+    gVbS1(gVbN) = VB_Pct(dy1, dx1)
+    gVbS2(gVbN) = VB_Pct(dy2, dx2)
+    gVbN = gVbN + 1
+End Sub
+
+Sub VB_AddRef(ByVal d As Double, ByVal ang As Double, ByVal rw As Long, ByVal nT As String)
+    gVcD(gVcN) = d: gVcAng(gVcN) = ang: gVcRow(gVcN) = rw: gVcNote(gVcN) = nT
+    gVcN = gVcN + 1
+End Sub
+
+' �ܼ�ȭ(���۷���-��Ŀ): �������� VB_DP_TOL �Ѱ� ��� ���� ���������� ����
+Sub VB_DP(vd() As Double, vi() As Double, keep() As Boolean, ByVal a As Long, ByVal b As Long)
+    Dim j As Long, jm As Long, dmax As Double, dd As Double, t As Double, yl As Double
+    If b - a < 2 Then Exit Sub
+    dmax = -1#: jm = -1
+    For j = a + 1 To b - 1
+        If vd(b) - vd(a) > 0.000001 Then
+            t = (vd(j) - vd(a)) / (vd(b) - vd(a))
+            yl = vi(a) + t * (vi(b) - vi(a))
+            dd = Abs(vi(j) - yl)
+        Else
+            dd = Abs(vi(j) - vi(a))
+        End If
+        If dd > dmax Then dmax = dd: jm = j
+    Next j
+    If dmax > VB_DP_TOL And jm > 0 Then
+        keep(jm) = True
+        VB_DP vd, vi, keep, a, jm
+        VB_DP vd, vi, keep, jm, b
+    End If
+End Sub
+
+' A�� Pǥ�� ���� (pP ������ Boolean/���� ��� ���̵� ó��)
+Function VB_IsP(ByVal i As Long) As Boolean
+    Dim s As String
+    On Error Resume Next
+    s = UCase(Trim(CStr(pp(i))))
+    On Error GoTo 0
+    VB_IsP = (s = "P" Or s = "TRUE" Or s = "-1" Or s = "1" Or s = "��")
+End Function
+
+' ����(EA)
+Function VB_EA(ByVal ang As Double) As Long
+    If ang > VB_A45 And VB_SPLIT90 Then VB_EA = 2 Else VB_EA = 1
+End Function
+
+' �˻� ����� "����_���" ��Ʈ�� ��� (��Ʈ�� ������ �ʰ� ���븸 ����)
+Sub VB_WriteList()
+    Dim wa As Object, ws As Object, k As Long, r As Long
+    Dim n11 As Long, n22 As Long, n45 As Long, n90 As Long, sp As String
+    If Not VB_LIST Then Exit Sub
+    Set wa = ActiveSheet
+    On Error Resume Next
+    Set ws = wa.Parent.Worksheets(VB_LIST_SH)
+    On Error GoTo 0
+    If ws Is Nothing Then
+        Set ws = wa.Parent.Worksheets.Add(After:=wa.Parent.Worksheets(wa.Parent.Worksheets.Count))
+        ws.Name = VB_LIST_SH
+        wa.Activate
+    End If
+    ws.Cells.ClearContents
+    ws.Range("A1:J1").Value = Array("No", "����", "�����Ÿ�", "�ձ���(%)", "�ڱ���(%)", _
+                                    "���Ӱ�(��)", "�԰�", "����(EA)", "����", "������")
+    r = 2
+    For k = 0 To gVbN - 1
+        sp = VB_Spec(gVbAng(k))
+        ws.Cells(r, 1).Value = k + 1
+        ws.Cells(r, 2).Value = VB_Sta(gVbD(k))
+        ws.Cells(r, 3).Value = Round(gVbD(k), 2)
+        ws.Cells(r, 4).Value = VB_PctTxt(gVbS1(k))
+        ws.Cells(r, 5).Value = VB_PctTxt(gVbS2(k))
+        ws.Cells(r, 6).Value = Round(gVbAng(k), 2)
+        ws.Cells(r, 7).Value = sp
+        ws.Cells(r, 8).Value = VB_EA(gVbAng(k))
+        ws.Cells(r, 9).Value = gVbDia(k)
+        ws.Cells(r, 10).Value = gVbRow(k)
+        If gVbAng(k) <= VB_A11 Then
+            n11 = n11 + 1
+        ElseIf gVbAng(k) <= VB_A22 Then
+            n22 = n22 + 1
+        ElseIf gVbAng(k) <= VB_A45 Then
+            n45 = n45 + 1
+        Else
+            n90 = n90 + 1
+        End If
+        r = r + 1
+    Next k
+    If gVbN = 0 Then ws.Cells(r, 1).Value = "������� ����": r = r + 1
+
+    r = r + 1
+    ws.Cells(r, 1).Value = "�հ�"
+    ws.Cells(r, 2).Value = "��ġ " & gVbN & "��"
+    ws.Cells(r, 3).Value = "11+1/4�� " & n11 & "EA"
+    ws.Cells(r, 4).Value = "22+1/2�� " & n22 & "EA"
+    ws.Cells(r, 5).Value = "45�� " & (n45 + IIf(VB_SPLIT90, n90 * 2, 0)) & "EA"
+    If Not VB_SPLIT90 Then ws.Cells(r, 6).Value = "90�� " & n90 & "EA"
+
+    r = r + 2
+    ws.Cells(r, 1).Value = "����(ǥ�� �� �� ����)"
+    ws.Range(ws.Cells(r + 1, 1), ws.Cells(r + 1, 5)).Value = Array("No", "����", "���Ӱ�(��)", "������", "����")
+    r = r + 2
+    For k = 0 To gVcN - 1
+        ws.Cells(r, 1).Value = k + 1
+        ws.Cells(r, 2).Value = VB_Sta(gVcD(k))
+        ws.Cells(r, 3).Value = Round(gVcAng(k), 2)
+        ws.Cells(r, 4).Value = gVcRow(k)
+        ws.Cells(r, 5).Value = gVcNote(k)
+        r = r + 1
+    Next k
+End Sub
+
+
+Function VB_Atan2(ByVal dy As Double, ByVal dx As Double) As Double
+    If Abs(dx) < 0.000001 Then
+        If dy >= 0 Then VB_Atan2 = PI / 2# Else VB_Atan2 = -PI / 2#
+    ElseIf dx > 0 Then
+        VB_Atan2 = Atn(dy / dx)
+    ElseIf dy >= 0 Then
+        VB_Atan2 = Atn(dy / dx) + PI
+    Else
+        VB_Atan2 = Atn(dy / dx) - PI
+    End If
+End Function
+
+Function VB_Pct(ByVal dy As Double, ByVal dx As Double) As Double
+    If Abs(dx) < 0.000001 Then
+        VB_Pct = 1E+30                   ' ����
+    Else
+        VB_Pct = dy / dx * 100#
+    End If
+End Function
+
+Function VB_PctTxt(ByVal s As Double) As Variant
+    If s > 1E+29 Then VB_PctTxt = "����" Else VB_PctTxt = Round(s, 3)
+End Function
+
+
+
+' ���� �� ��� �԰� ���� (���������� ����)
+Function VB_Spec(ByVal ang As Double) As String
+    If ang <= VB_A11 Then
+        VB_Spec = "11+1/4��"
+    ElseIf ang <= VB_A22 Then
+        VB_Spec = "22+1/2��"
+    ElseIf ang <= VB_A45 Then
+        VB_Spec = "45��"
+    Else
+        If VB_SPLIT90 Then VB_Spec = "45�ơ�2EA" Else VB_Spec = "90��"
+    End If
+End Function
+
+Function VB_Sta(ByVal d As Double) As String
+    Dim ch As Double, n As Long, rm As Double
+    ch = gChain: If ch <= 0 Then ch = 20#
+    n = Int(d / ch + 0.000001)
+    rm = d - n * ch
+    If rm < 0.005 Then
+        VB_Sta = "No." & n
+    Else
+        VB_Sta = "No." & n & "+" & Format(rm, "0.00")
+    End If
+End Function
+
+Function VB_TW(ByVal s As String) As Double
+    Dim i As Long, w As Double, c As Long
+    For i = 1 To Len(s)
+        c = AscW(Mid(s, i, 1))
+        If c < 0 Or c > 255 Then w = w + 1# Else w = w + 0.65
+    Next i
+    VB_TW = w * TEXT_WF
+End Function
+
+Function VB_P(ByVal x As Double, ByVal y As Double) As Variant
+    Dim p(0 To 2) As Double
+    p(0) = x: p(1) = y: p(2) = 0#
+    VB_P = p
+End Function
+
+Sub VB_Line(ByVal xA As Double, ByVal ya As Double, ByVal xB As Double, ByVal yB As Double, ByVal lay As String)
+    Dim o As Object
+    Set o = ms.AddLine(VB_P(xA, ya), VB_P(xB, yB))
+    o.Layer = lay
+End Sub
+
+Sub VB_Text(ByVal s As String, ByVal x As Double, ByVal y As Double, ByVal h As Double, ByVal rt As Double, ByVal lay As String)
+    Dim o As Object
+    Set o = ms.AddText(s, VB_P(x, y), h)
+    o.Rotation = rt
+    o.Layer = lay
+    On Error Resume Next
+    o.ScaleFactor = TEXT_WF
+    On Error GoTo 0
+End Sub
+
+Sub VB_Layers()
+    Dim L As Object
+    On Error Resume Next
+    Set L = doc.Layers.Add("PF_VBEND"): L.Color = COL_VB_L
+    Set L = doc.Layers.Add("PF_VBEND_T"): L.Color = COL_VB_T
+    On Error GoTo 0
+End Sub
+
+
+'================ �ϴ� �������� ����ǥ =================
+Sub DrawBomTables(ByVal dS As Double, ByVal dE As Double)
+    Dim isLast As Boolean, lastD As Double, yNext As Double, xA As Double
+    If Not BT_ON Then Exit Sub
+    If pN < 1 Then Exit Sub
+    lastD = pD(pN - 1)
+    If BT_SHEET Then
+        isLast = (dE >= lastD - 0.001)
+    Else
+        If dS > pD(0) + 0.001 Then Exit Sub         ' ù �忡����
+        dS = pD(0) - 1#: dE = lastD + 1#: isLast = True
+    End If
+    BT_Layers
+    xA = x0
+    yNext = yTblBot - BT_TOP * SC
+    yNext = BT_BendTable(dS, dE, isLast, xA, yNext)
+    BT_ValveTable dS, dE, isLast, xA, yNext
+End Sub
+
+
+' ��� ����ǥ �� ���� ǥ�� �׸� y ������
+Function BT_BendTable(ByVal dS As Double, ByVal dE As Double, ByVal isLast As Boolean, _
+                      ByVal xA As Double, ByVal ya As Double) As Double
+    Dim mx As Long, n As Long, i As Long, k As Long, p As Long, r As Long, nr As Long, tot As Long
+    Dim kd() As String, dd() As Double, di() As Double, sp() As String, ea() As Long
+    Dim ord() As Long, cel() As String, rk() As Integer
+    Dim s As String, kn As String, num As Double, bSpec As String, cnt As Long, kk As Variant
+
+    BT_BendTable = ya
+    mx = pN + gVbN + 2
+    ReDim kd(0 To mx), dd(0 To mx), di(0 To mx), sp(0 To mx), ea(0 To mx)
+    n = 0
+
+    ' �� �ڵ� �˻��� �������
+    For k = 0 To gVbN - 1
+        If BT_In(gVbD(k), dS, dE, isLast) Then
+            BT_AddItem kd, dd, di, sp, ea, n, "�������", gVbD(k), gVbDia(k), _
+                       VB_Spec(gVbAng(k)), VB_EA(gVbAng(k))
+        End If
+    Next k
+
+    ' �� G�� �Է�: ������ / ���� �Է��� �������
+    For i = 0 To pN - 1
+        If Not BT_In(pD(i), dS, dE, isLast) Then GoTo nextI
+        s = Trim(CStr(pTx1(i)))
+        If Len(s) = 0 Then GoTo nextI
+        p = InStr(s, "����")
+        If p > 0 Then
+            kn = "������"
+        Else
+            p = InStr(s, "����")
+            If p = 0 Then GoTo nextI
+            kn = "�������"
+        End If
+        num = Val(Mid(s, p + 2))
+        If num = 11 Then num = 11.25
+        If num = 22 Then num = 22.5
+        If num > 0 Then
+            bSpec = VB_Spec(num): cnt = VB_EA(num)
+        Else
+            bSpec = Mid(s, p + 2): cnt = 1
+        End If
+        BT_AddItem kd, dd, di, sp, ea, n, kn, pD(i), BT_DiaAt(i), bSpec, cnt
+nextI:
+    Next i
+    If n = 0 Then Exit Function
+
+    ReDim ord(0 To n - 1)
+    BT_Order dd, n, ord
+    ReDim cel(0 To 2 * n + 1, 0 To 4), rk(0 To 2 * n + 1)
+
+    nr = 0: tot = 0
+    For r = 0 To n - 1
+        k = ord(r)
+        cel(nr, 0) = CStr(r + 1)
+        cel(nr, 1) = BT_Name(kd(k), di(k))
+        cel(nr, 2) = sp(k)
+        cel(nr, 3) = CStr(ea(k))
+        cel(nr, 4) = VB_Sta(dd(k))
+        rk(nr) = 0
+        nr = nr + 1
+        tot = tot + ea(k)
+    Next r
+
+    If BT_SUBTOT Then
+        For Each kk In Array("�������", "������")
+            For r = 0 To n - 1
+                k = ord(r)
+                If kd(k) = kk Then
+                    If BT_First(kd, di, sp, ord, r) Then
+                        cel(nr, 0) = "�Ұ�"
+                        cel(nr, 1) = BT_Name(kd(k), di(k))
+                        cel(nr, 2) = sp(k)
+                        cel(nr, 3) = CStr(BT_Sum(kd, di, sp, ea, n, k))
+                        rk(nr) = 1
+                        nr = nr + 1
+                    End If
+                End If
+            Next r
+        Next kk
+        cel(nr, 0) = "�Ѱ�": cel(nr, 3) = CStr(tot): rk(nr) = 2
+        nr = nr + 1
+    End If
+
+    BT_BendTable = BT_Draw("�� �� �� �� ǥ", Array("��ȣ", "���(����������)", "����", "����", "ü��"), _
+                           Array(10#, 30#, 24#, 12#, 28#), cel, rk, nr, 5, xA, ya) - BT_GAP * SC
+End Function
+
+
+' ��� ����ǥ
+Sub BT_ValveTable(ByVal dS As Double, ByVal dE As Double, ByVal isLast As Boolean, _
+                  ByVal xA As Double, ByVal ya As Double)
+    Dim n As Long, i As Long, k As Long, r As Long, nr As Long, tot As Long, cd As String
+    Dim kd() As String, dd() As Double, di() As Double, sp() As String, ea() As Long
+    Dim ord() As Long, cel() As String, rk() As Integer
+
+    ReDim kd(0 To pN), dd(0 To pN), di(0 To pN), sp(0 To pN), ea(0 To pN)
+    n = 0
+    For i = 0 To pN - 1
+        If BT_In(pD(i), dS, dE, isLast) Then
+            cd = UCase(Left(Trim(CStr(pFac(i))), 1))
+            If Len(cd) > 0 And InStr(BT_VLV_CODES, cd) > 0 Then
+                BT_AddItem kd, dd, di, sp, ea, n, BT_VlvName(cd), pD(i), BT_DiaAt(i), "", 1
+            End If
+        End If
+    Next i
+    If n = 0 Then Exit Sub
+
+    ReDim ord(0 To n - 1)
+    BT_Order dd, n, ord
+    ReDim cel(0 To 2 * n + 1, 0 To 4), rk(0 To 2 * n + 1)
+
+    nr = 0: tot = 0
+    For r = 0 To n - 1
+        k = ord(r)
+        cel(nr, 0) = CStr(r + 1)
+        cel(nr, 1) = kd(k)
+        cel(nr, 2) = BT_DiaTxt(di(k))
+        cel(nr, 3) = CStr(ea(k))
+        cel(nr, 4) = VB_Sta(dd(k))
+        rk(nr) = 0
+        nr = nr + 1
+        tot = tot + ea(k)
+    Next r
+
+    If BT_SUBTOT Then
+        For r = 0 To n - 1
+            k = ord(r)
+            If BT_First(kd, di, sp, ord, r) Then
+                cel(nr, 0) = "�Ұ�"
+                cel(nr, 1) = kd(k)
+                cel(nr, 2) = BT_DiaTxt(di(k))
+                cel(nr, 3) = CStr(BT_Sum(kd, di, sp, ea, n, k))
+                rk(nr) = 1
+                nr = nr + 1
+            End If
+        Next r
+        cel(nr, 0) = "�Ѱ�": cel(nr, 3) = CStr(tot): rk(nr) = 2
+        nr = nr + 1
+    End If
+
+    BT_Draw "�� �� �� �� ǥ", Array("��ȣ", "��ꡤ�ü�", "����", "����", "ü��"), _
+            Array(10#, 26#, 16#, 12#, 28#), cel, rk, nr, 5, xA, ya
+End Sub
+
+' ǥ �׸��� �� �� �Ʒ� y ������
+Function BT_Draw(ByVal ttl As String, hdr As Variant, wd As Variant, cel() As String, rk() As Integer, _
+                 ByVal nr As Long, ByVal nc As Long, ByVal xA As Double, ByVal ya As Double) As Double
+    Dim rh As Double, h As Double, tw As Double, cw As Double
+    Dim c As Long, r As Long, b As Long, nb As Long, r0 As Long, r1 As Long, nRw As Long
+    Dim bx As Double, yTop As Double, yy As Double, xx As Double, yMin As Double, lay As String
+
+    rh = BT_RH * SC: h = BT_TH * SC
+    tw = 0
+    For c = 0 To nc - 1
+        tw = tw + wd(c) * SC
+    Next c
+    nb = Int((nr - 1) / BT_MAXROW) + 1
+
+    BT_Text ttl, xA + tw / 2#, ya - BT_TTH * SC * 0.6, BT_TTH * SC, "PF_BTBL_H"
+    yTop = ya - BT_TTH * SC * 1.8
+    yMin = yTop
+
+    For b = 0 To nb - 1
+        bx = xA + b * (tw + BT_BLKGAP * SC)
+        r0 = b * BT_MAXROW
+        r1 = r0 + BT_MAXROW - 1
+        If r1 > nr - 1 Then r1 = nr - 1
+        nRw = r1 - r0 + 2                               ' �Ӹ��� ����
+
+        For r = 0 To nRw                                ' ���μ�
+            yy = yTop - r * rh
+            VB_Line bx, yy, bx + tw, yy, "PF_BTBL"
+        Next r
+        xx = bx                                         ' ���μ�
+        For c = 0 To nc
+            VB_Line xx, yTop, xx, yTop - nRw * rh, "PF_BTBL"
+            If c < nc Then xx = xx + wd(c) * SC
+        Next c
+
+        xx = bx                                         ' �Ӹ���
+        For c = 0 To nc - 1
+            cw = wd(c) * SC
+            BT_Fit CStr(hdr(c)), xx + cw / 2#, yTop - rh / 2#, h, cw, "PF_BTBL_H"
+            xx = xx + cw
+        Next c
+
+        For r = r0 To r1                                ' ����
+            yy = yTop - (r - r0 + 1.5) * rh
+            If rk(r) = 0 Then lay = "PF_BTBL_T" Else lay = "PF_BTBL_H"
+            xx = bx
+            For c = 0 To nc - 1
+                cw = wd(c) * SC
+                BT_Fit cel(r, c), xx + cw / 2#, yy, h, cw, lay
+                xx = xx + cw
+            Next c
+        Next r
+        If yTop - nRw * rh < yMin Then yMin = yTop - nRw * rh
+    Next b
+    BT_Draw = yMin
+End Function
+
+Function BT_In(ByVal d As Double, ByVal dS As Double, ByVal dE As Double, ByVal isLast As Boolean) As Boolean
+    BT_In = False
+    If d < dS - 0.001 Then Exit Function
+    If d < dE - 0.001 Then
+        BT_In = True
+    ElseIf isLast And d <= dE + 0.001 Then
+        BT_In = True
+    End If
+End Function
+
+Sub BT_AddItem(kd() As String, dd() As Double, di() As Double, sp() As String, ea() As Long, n As Long, _
+               ByVal kn As String, ByVal d As Double, ByVal dia As Double, ByVal bSpec As String, ByVal cnt As Long)
+    Dim j As Long
+    If BT_DEDUP Then
+        For j = 0 To n - 1
+            If kd(j) = kn And sp(j) = bSpec And Abs(dd(j) - d) < 0.005 And Abs(di(j) - dia) < 0.5 Then Exit Sub
+        Next j
+    End If
+    kd(n) = kn: dd(n) = d: di(n) = dia: sp(n) = bSpec: ea(n) = cnt
+    n = n + 1
+End Sub
+
+' ü�� �� ����(���� �迭)
+Sub BT_Order(dd() As Double, ByVal n As Long, ord() As Long)
+    Dim i As Long, j As Long, t As Long
+    For i = 0 To n - 1
+        ord(i) = i
+    Next i
+    For i = 1 To n - 1
+        t = ord(i): j = i - 1
+        Do While j >= 0
+            If dd(ord(j)) <= dd(t) + 0.000001 Then Exit Do
+            ord(j + 1) = ord(j)
+            j = j - 1
+        Loop
+        ord(j + 1) = t
+    Next i
+End Sub
+
+' ���� ���������桤�԰� �� ó�� ���� ���ΰ�
+Function BT_First(kd() As String, di() As Double, sp() As String, ord() As Long, ByVal r As Long) As Boolean
+    Dim q As Long, a As Long, k As Long
+    k = ord(r)
+    BT_First = True
+    For q = 0 To r - 1
+        a = ord(q)
+        If kd(a) = kd(k) And sp(a) = sp(k) And Abs(di(a) - di(k)) < 0.5 Then
+            BT_First = False
+            Exit Function
+        End If
+    Next q
+End Function
+
+Function BT_Sum(kd() As String, di() As Double, sp() As String, ea() As Long, ByVal n As Long, ByVal k As Long) As Long
+    Dim j As Long, t As Long
+    For j = 0 To n - 1
+        If kd(j) = kd(k) And sp(j) = sp(k) And Abs(di(j) - di(k)) < 0.5 Then t = t + ea(j)
+    Next j
+    BT_Sum = t
+End Function
+
+' ������ 0�̸� �ա�ڷ� ����� ���� ���
+Function BT_DiaAt(ByVal i As Long) As Double
+    Dim j As Long
+    If pDia(i) > 0 Then BT_DiaAt = pDia(i): Exit Function
+    For j = i - 1 To 0 Step -1
+        If pDia(j) > 0 Then BT_DiaAt = pDia(j): Exit Function
+    Next j
+    For j = i + 1 To pN - 1
+        If pDia(j) > 0 Then BT_DiaAt = pDia(j): Exit Function
+    Next j
+    BT_DiaAt = 0
+End Function
+
+Function BT_Name(ByVal kn As String, ByVal dia As Double) As String
+    If BT_SHOW_DIA And dia > 0 Then
+        BT_Name = kn & " D" & Format(dia, "0")
+    Else
+        BT_Name = kn
+    End If
+End Function
+
+Function BT_DiaTxt(ByVal dia As Double) As String
+    If dia > 0 Then BT_DiaTxt = "D" & Format(dia, "0") Else BT_DiaTxt = "-"
+End Function
+
+Function BT_VlvName(ByVal cd As String) As String
+    Select Case cd
+        Case "G": BT_VlvName = "������"
+        Case "I": BT_VlvName = "������"
+        Case "J": BT_VlvName = "�������"
+        Case "U": BT_VlvName = "������"
+        Case "R": BT_VlvName = "���й��"
+        Case "P": BT_VlvName = "������"
+        Case Else: BT_VlvName = cd
+    End Select
+End Function
+
+' ĭ ���� ���� �۾� ����
+Sub BT_Fit(ByVal s As String, ByVal x As Double, ByVal y As Double, ByVal h As Double, _
+           ByVal cw As Double, ByVal lay As String)
+    Dim w As Double
+    If Len(s) = 0 Then Exit Sub
+    w = VB_TW(s) * h
+    If w > cw * 0.9 Then h = h * cw * 0.9 / w
+    BT_Text s, x, y, h, lay
+End Sub
+
+' ��� ���� ����
+Sub BT_Text(ByVal s As String, ByVal x As Double, ByVal y As Double, ByVal h As Double, ByVal lay As String)
+    Dim o As Object
+    If Len(s) = 0 Then Exit Sub
+    Set o = ms.AddText(s, VB_P(x - VB_TW(s) * h / 2#, y - h / 2#), h)
+    o.Layer = lay
+    On Error Resume Next
+    o.ScaleFactor = TEXT_WF
+    o.Alignment = 10                       ' ���߾�
+    o.TextAlignmentPoint = VB_P(x, y)
+    On Error GoTo 0
+End Sub
+
+Sub BT_Layers()
+    Dim L As Object
+    On Error Resume Next
+    Set L = doc.Layers.Add("PF_BTBL"): L.Color = COL_BT_L
+    Set L = doc.Layers.Add("PF_BTBL_T"): L.Color = COL_BT_T
+    Set L = doc.Layers.Add("PF_BTBL_H"): L.Color = COL_BT_H
+    On Error GoTo 0
+End Sub
+
+
+'================ ��� ���� �� ��� ���� ��Ģ (�帶�� �������� ����) =================
+Sub VLV_PostSheet(ByVal dS As Double, ByVal dE As Double)
+    Dim i As Long, j As Long, n As Long, cd As String, ok As Boolean, dia As Double
+    Dim vlX() As Double, vlY() As Double, vlC() As String, vlD() As Double
+
+    If pN < 1 Then Exit Sub
+    If dS <= pD(0) + 0.001 Then gScan0 = 0
+
+    ' �� ���� ���⡤������ ��ġ
+    ReDim vlX(0 To pN), vlY(0 To pN), vlC(0 To pN), vlD(0 To pN)
+    n = 0
+    If VLV_ON Then
+        For i = 0 To pN - 1
+            If pD(i) < dS - 0.001 Or pD(i) > dE + 0.001 Then GoTo nextI
+            cd = UCase(Left(Trim(CStr(pFac(i))), 1))
+            If Len(cd) = 0 Or InStr(VLV_CODES, cd) = 0 Then GoTo nextI
+            If pInv(i) <= 0 Then GoTo nextI
+            ok = True
+            For j = 0 To n - 1
+                If vlC(j) = cd And Abs(vlD(j) - pD(i)) < 0.005 Then ok = False: Exit For
+            Next j
+            If Not ok Then GoTo nextI
+            dia = BT_DiaAt(i)
+            vlD(n) = pD(i): vlC(n) = cd
+            vlX(n) = XD(pD(i), dS)
+            If cd = "I" Then
+                vlY(n) = YE(pInv(i))                     ' ����: �� �Ʒ�
+            Else
+                vlY(n) = YE(pInv(i) + dia / 1000#)       ' ����: �� ��
+            End If
+            n = n + 1
+nextI:
+        Next i
+    End If
+
+    VLV_Scan vlX, n
+    If n > 0 Then
+        VLV_Layer
+        For j = 0 To n - 1
+            VLV_Insert vlC(j), vlX(j), vlY(j)
+        Next j
+    End If
+    gScan0 = ms.Count
+End Sub
+
+' �̹� �忡 ���� �׸� ��ü �˻�: ��� ���� ��Ģ ����, ���� �ڸ� ���� ��� ǥ�� ����
+Sub VLV_Scan(vlX() As Double, ByVal n As Long)
+    Dim i As Long, j As Long, o As Object, lay As String, s As String, s2 As String
+    Dim pt As Variant, bn As String, hit As Boolean
+    For i = ms.Count - 1 To gScan0 Step -1
+        Set o = Nothing
+        lay = ""
+        On Error Resume Next
+        Set o = ms.Item(i)
+        lay = o.Layer
+        On Error GoTo 0
+        If o Is Nothing Then GoTo nextO
+
+        If HB_RULE And lay = "PF_NOTE_T" Then
+            s = ""
+            On Error Resume Next
+            s = o.TextString
+            On Error GoTo 0
+            s2 = HB_Fix(s)
+            If s2 <> s Then o.TextString = s2
+        ElseIf VLV_DEL_OLD And n > 0 And lay = "PF_FAC" Then
+            pt = Empty: bn = ""
+            On Error Resume Next
+            pt = o.Center
+            If IsEmpty(pt) Then pt = o.InsertionPoint
+            bn = UCase(o.Name)
+            On Error GoTo 0
+            If Not IsEmpty(pt) And Left(bn, 2) <> "MH" Then
+                hit = False
+                For j = 0 To n - 1
+                    If Abs(pt(0) - vlX(j)) < 0.01 Then hit = True: Exit For
+                Next j
+                If hit Then o.Delete
+            End If
+        End If
+nextO:
+    Next i
+End Sub
+
+' "D=160��90��" �� "D=160��45�ơ�2EA", "D=100��30��" �� "D=100��22+1/2��" (���������� ���� ��Ģ)
+Function HB_Fix(ByVal s As String) As String
+    Dim p As Long, num As Double
+    HB_Fix = s
+    If UCase(Left(s, 2)) <> "D=" Then Exit Function
+    If InStr(UCase(s), "EA") > 0 Then Exit Function      ' �̹� �ٲ� ����
+    p = InStr(s, "��")
+    If p = 0 Then p = InStr(3, LCase(s), "x")
+    If p = 0 Then Exit Function
+    num = Val(Mid(s, p + 1))
+    If num <= 0 Then Exit Function
+    If num = 11 Then num = 11.25
+    If num = 22 Then num = 22.5
+    HB_Fix = Left(s, p) & VB_Spec(num)
+End Function
+
+' ��� ���� �ֱ� (������ ���� ����, ������ ���� ����)
+Sub VLV_Insert(ByVal cd As String, ByVal x As Double, ByVal y As Double)
+    Dim nm As String, o As Object, k As Double
+    nm = "VLV_" & cd
+    If Not VLV_HasBlock(nm) Then VLV_MakeBlock nm, (cd = "I")
+    k = SC * VLV_SCL
+    Set o = ms.InsertBlock(VB_P(x, y), nm, k, k, k, 0#)
+    o.Layer = "PF_VLV"
+End Sub
+
+Function VLV_HasBlock(ByVal nm As String) As Boolean
+    Dim b As Object
+    On Error Resume Next
+    Set b = doc.Blocks.Item(nm)
+    On Error GoTo 0
+    VLV_HasBlock = Not (b Is Nothing)
+End Function
+
+' ��ȣ ���� ����� (���� mm ����, ������: ������=�� �Ʒ���, ������=�� ����)
+Sub VLV_MakeBlock(ByVal nm As String, ByVal dn As Boolean)
+    Dim b As Object, o As Object, r As Double, t As Double, cy As Double, ok As Boolean
+    Dim tA As Variant, tB As Variant, tC As Variant
+    r = VLV_R: t = VLV_R * VLV_TRI
+    If dn Then cy = -r Else cy = r
+    Set b = doc.Blocks.Add(VB_P(0#, 0#), nm)
+    Set o = b.AddCircle(VB_P(0#, cy), r)
+    o.Layer = "0"
+    If dn Then
+        tA = VB_P(0#, cy - t)                          ' ���� �Ʒ�(����)
+        tB = VB_P(-t * 0.866, cy + t * 0.5)
+        tC = VB_P(t * 0.866, cy + t * 0.5)
+    Else
+        tA = VB_P(0#, cy + t)                          ' ���� ��(����)
+        tB = VB_P(-t * 0.866, cy - t * 0.5)
+        tC = VB_P(t * 0.866, cy - t * 0.5)
+    End If
+    Set o = Nothing
+    On Error Resume Next
+    Set o = b.AddSolid(tA, tB, tC, tC)
+    ok = Not (o Is Nothing)
+    If ok Then o.Layer = "0"
+    On Error GoTo 0
+    If Not ok Then                                     ' ä��Ⱑ �� �Ǹ� ������
+        Set o = b.AddLine(tA, tB): o.Layer = "0"
+        Set o = b.AddLine(tB, tC): o.Layer = "0"
+        Set o = b.AddLine(tC, tA): o.Layer = "0"
+    End If
+End Sub
+
+Sub VLV_Layer()
+    Dim L As Object
+    On Error Resume Next
+    Set L = doc.Layers.Add("PF_VLV"): L.Color = COL_VLV
+    On Error GoTo 0
+End Sub
+
+'==========================================================
+' ��� �ֱ⿡ �ɵ�(H=���ݰ�-������) �߰� : �ֱ� �۵� �� ����
+'==========================================================
+Sub VN_PostSheet(ByVal dS As Double, ByVal dE As Double)
+    If Not VN_ON Then Exit Sub
+    Dim vMs As Object, ent As Object, hObj As Object
+    Dim nT As Long, i As Long, j As Long, k As Long, jBest As Long
+    Dim tObj() As Object, tStr() As String, tX() As Double, tY() As Double
+    Dim tR() As Double, tH() As Double, used() As Boolean
+    Dim xA As Double, xB As Double, mg As Double, tmp As Double
+    Dim s As String, sK As String, oNm As String, fCode As String
+    Dim ip As Variant
+    Dim cR As Double, sR As Double, dx As Double, dy As Double
+    Dim pp As Double, aa As Double, ppBest As Double, gap As Double
+    Dim dSta As Double, dep As Double, hasH As Boolean
+    Dim p0(0 To 2) As Double, p1(0 To 2) As Double
+
+    Set vMs = VN_MS()
+    If vMs Is Nothing Then Exit Sub
+    xA = XD(dS, dS): xB = XD(dE, dS)
+    If xB < xA Then tmp = xA: xA = xB: xB = tmp
+    mg = (xB - xA) * 0.15
+
+    nT = 0
+    ReDim tObj(0 To 99): ReDim tStr(0 To 99): ReDim tX(0 To 99)
+    ReDim tY(0 To 99): ReDim tR(0 To 99): ReDim tH(0 To 99)
+
+    On Error Resume Next
+    For Each ent In vMs
+        Err.Clear
+        oNm = "": oNm = ent.ObjectName
+        If InStr(1, oNm, "Text", vbTextCompare) > 0 And InStr(1, oNm, "MText", vbTextCompare) = 0 Then
+            s = "": s = ent.TextString
+            sK = UCase(Replace(s, " ", ""))
+            If Left(sK, 3) = "NO." Or Left(sK, 2) = "H=" Or VN_CodeOf(sK) <> "" Then
+                Err.Clear
+                ip = ent.InsertionPoint
+                If Err.Number = 0 Then
+                    If ip(0) >= xA - mg And ip(0) <= xB + mg Then
+                        If nT > UBound(tStr) Then
+                            ReDim Preserve tObj(0 To nT + 99): ReDim Preserve tStr(0 To nT + 99)
+                            ReDim Preserve tX(0 To nT + 99): ReDim Preserve tY(0 To nT + 99)
+                            ReDim Preserve tR(0 To nT + 99): ReDim Preserve tH(0 To nT + 99)
+                        End If
+                        Set tObj(nT) = ent
+                        tStr(nT) = sK: tX(nT) = ip(0): tY(nT) = ip(1)
+                        tR(nT) = ent.Rotation: tH(nT) = ent.Height
+                        nT = nT + 1
+                    End If
+                End If
+            End If
+        End If
+    Next ent
+    If nT = 0 Then Exit Sub
+    ReDim used(0 To nT - 1)
+
+    For i = 0 To nT - 1
+        fCode = VN_CodeOf(tStr(i))
+        If fCode <> "" Then
+            cR = Cos(tR(i)): sR = Sin(tR(i))
+            jBest = -1: ppBest = 1E+30
+            ' ��� �̸� �ٷ� �Ʒ� ���� ���� ã��
+            For j = 0 To nT - 1
+                If j <> i And Not used(j) And Left(tStr(j), 3) = "NO." Then
+                    If Abs(Sin(tR(j) - tR(i))) < 0.03 And Cos(tR(j) - tR(i)) > 0 Then
+                        dx = tX(j) - tX(i): dy = tY(j) - tY(i)
+                        pp = dx * sR - dy * cR          ' ���� �Ʒ��� �Ÿ�
+                        aa = dx * cR + dy * sR          ' ���� ���� �Ÿ�
+                        If pp > 0.2 * tH(i) And pp < 5 * tH(i) And Abs(aa) < 15 * tH(i) Then
+                            If pp < ppBest Then ppBest = pp: jBest = j
+                        End If
+                    End If
+                End If
+            Next j
+
+            If jBest >= 0 Then
+                ' �̹� H= �� ������ �ǳʶ�(�ߺ� ����)
+                hasH = False
+                For k = 0 To nT - 1
+                    If Left(tStr(k), 2) = "H=" Then
+                        dx = tX(k) - tX(i): dy = tY(k) - tY(i)
+                        pp = dx * sR - dy * cR: aa = dx * cR + dy * sR
+                        If pp > 0 And pp < ppBest And Abs(aa) < 15 * tH(i) Then hasH = True: Exit For
+                    End If
+                Next k
+
+                If Not hasH Then
+                    dSta = VN_StaToD(tStr(jBest))
+                    dep = VN_Depth(dSta, fCode)
+                    If dSta >= 0 And dep > -900 Then
+                        Err.Clear
+                        Set hObj = Nothing
+                        Set hObj = tObj(jBest).Copy
+                        If Not hObj Is Nothing Then
+                            hObj.TextString = "H=" & Format(dep, VN_FMT) & "m"
+                            gap = VN_LGAP * tH(jBest)
+                            p0(0) = 0: p0(1) = 0: p0(2) = 0
+                            p1(0) = gap * Sin(tR(jBest))
+                            p1(1) = -gap * Cos(tR(jBest))
+                            p1(2) = 0
+                            tObj(jBest).Move p0, p1      ' ���� ���ڸ� �� �� �Ʒ���
+                        End If
+                    End If
+                End If
+                used(jBest) = True
+            End If
+        End If
+    Next i
+    On Error GoTo 0
+End Sub
+
+Function VN_CodeOf(ByVal sK As String) As String
+    Dim nm As Variant, cd As Variant, i As Long
+    nm = Split(VN_NAMES, ","): cd = Split(VN_CODES, ",")
+    For i = 0 To UBound(nm)
+        If i > UBound(cd) Then Exit For
+        If sK = UCase(Replace(Trim(nm(i)), " ", "")) Then
+            VN_CodeOf = UCase(Trim(cd(i)))
+            Exit Function
+        End If
+    Next i
+End Function
+
+Function VN_StaToD(ByVal sK As String) As Double
+    Dim a As String, pos As Long
+    VN_StaToD = -1
+    If Left(sK, 3) <> "NO." Then Exit Function
+    a = Mid(sK, 4)
+    pos = InStr(a, "+")
+    If pos > 0 Then
+        VN_StaToD = Val(Left(a, pos - 1)) * VN_Chain() + Val(Mid(a, pos + 1))
+    Else
+        VN_StaToD = Val(a) * VN_Chain()
+    End If
+End Function
+
+Function VN_Chain() As Double
+    Static cVal As Double
+    Dim ws As Object, v As Variant
+    If cVal > 0 Then VN_Chain = cVal: Exit Function
+    cVal = 20#
+    On Error Resume Next
+    Set ws = ActiveSheet
+    If Not ws Is Nothing Then
+        If Left(ws.Name, 3) = "����_" Then Set ws = Nothing
+    End If
+    If ws Is Nothing Then
+        For Each ws In ActiveWorkbook.Worksheets
+            If Left(ws.Name, 3) <> "����_" Then
+                If IsNumeric(ws.Range("B2").Value) And IsNumeric(ws.Range("D2").Value) _
+                   And Not IsEmpty(ws.Range("D2").Value) Then Exit For
+            End If
+        Next ws
+    End If
+    If Not ws Is Nothing Then
+        v = ws.Range("D2").Value
+        If IsNumeric(v) And Not IsEmpty(v) Then
+            If CDbl(v) > 0 Then cVal = CDbl(v)
+        End If
+    End If
+    VN_Chain = cVal
+End Function
+
+Function VN_Depth(ByVal d As Double, ByVal fCode As String) As Double
+    Dim i As Long, i0 As Long, i1 As Long, f As String
+    Dim h As Double, best As Double, hit As Boolean, t As Double
+    VN_Depth = -999
+    If d < 0 Then Exit Function
+    i0 = LBound(pD): i1 = UBound(pD)
+    If pN > 0 And i0 + pN - 1 < i1 Then i1 = i0 + pN - 1
+
+    ' 1) ���� ���� + ���� �ü��ڵ� ��
+    For i = i0 To i1
+        If Abs(pD(i) - d) < 0.005 Then
+            f = UCase(Trim(CStr(pFac(i))))
+            If InStr(f, fCode) > 0 Then
+                VN_Depth = pGL(i) - pInv(i)
+                Exit Function
+            End If
+        End If
+    Next i
+    ' 2) ���� ���� �ٸ� �� (����=���� ����, �� ��=���� ���)
+    hit = False
+    For i = i0 To i1
+        If Abs(pD(i) - d) < 0.005 Then
+            h = pGL(i) - pInv(i)
+            If Not hit Then
+                best = h: hit = True
+            ElseIf fCode = "I" Then
+                If h > best Then best = h
+            Else
+                If h < best Then best = h
+            End If
+        End If
+    Next i
+    If hit Then VN_Depth = best: Exit Function
+    ' 3) �յ� ����
+    For i = i0 To i1 - 1
+        If pD(i) <= d And pD(i + 1) >= d And pD(i + 1) > pD(i) Then
+            t = (d - pD(i)) / (pD(i + 1) - pD(i))
+            VN_Depth = (pGL(i) + (pGL(i + 1) - pGL(i)) * t) _
+                     - (pInv(i) + (pInv(i + 1) - pInv(i)) * t)
+            Exit Function
+        End If
+    Next i
+End Function
+
+Function VN_MS() As Object
+    Dim app As Object, nm As Variant
+    On Error Resume Next
+    For Each nm In Array("ZWCAD.Application", "ZWCAD.Application.2025", _
+                         "ZWCAD.Application.2024", "ZWCAD.Application.2023", "AutoCAD.Application")
+        Set app = Nothing: Err.Clear
+        Set app = GetObject(, CStr(nm))
+        If Not app Is Nothing Then Exit For
+    Next nm
+    If app Is Nothing Then Exit Function
+    Set VN_MS = app.ActiveDocument.ModelSpace
+End Function
+
+'==========================================================
+' ���� ���� + ���� �ֱ� �� �۵� ���ȸ� �ߺ� �� ����
+'   facOnly = True �̸� �ü��ڵ�(F��)�� ���� (��� ����ǥ��)
+'==========================================================
+Sub ND_Hide(Optional ByVal facOnly As Boolean = False)
+    Dim i As Long, j As Long, i0 As Long, i1 As Long
+    Dim kF As String, kT As String
+    gNdHid = False
+    If Not ND_ON Then Exit Sub
+    On Error GoTo EH
+    i0 = LBound(pD): i1 = UBound(pD)
+    If pN > 0 And i0 + pN - 1 < i1 Then i1 = i0 + pN - 1
+    If UBound(pFac) < i1 Then i1 = UBound(pFac)
+    If UBound(pTx1) < i1 Then i1 = UBound(pTx1)
+
+    ReDim gNdFac(i0 To i1): ReDim gNdTx1(i0 To i1)
+    For i = i0 To i1
+        gNdFac(i) = pFac(i): gNdTx1(i) = pTx1(i)
+    Next i
+    gNdHid = True
+
+    For i = i0 + 1 To i1
+        kF = ND_Key(gNdFac(i))
+        If facOnly Then
+            kT = ""
+        Else
+            kT = ND_Key(gNdTx1(i))
+        End If
+        If kF <> "" Or kT <> "" Then
+            For j = i0 To i - 1
+                If Abs(pD(j) - pD(i)) < ND_TOL Then
+                    If kF <> "" Then
+                        If ND_Key(gNdFac(j)) = kF Then pFac(i) = "": kF = ""
+                    End If
+                    If kT <> "" Then
+                        If ND_Key(gNdTx1(j)) = kT Then pTx1(i) = "": kT = ""
+                    End If
+                    If kF = "" And kT = "" Then Exit For
+                End If
+            Next j
+        End If
+    Next i
+    Exit Sub
+EH:
+    ND_Restore
+End Sub
+
+
+Sub ND_Restore()
+    Dim i As Long
+    If Not gNdHid Then Exit Sub
+    On Error Resume Next
+    For i = LBound(gNdFac) To UBound(gNdFac)
+        pFac(i) = gNdFac(i)
+        pTx1(i) = gNdTx1(i)
+    Next i
+    gNdHid = False
+End Sub
+
+Function ND_Key(ByVal v As Variant) As String
+    Dim s As String
+    If IsError(v) Or IsNull(v) Or IsEmpty(v) Then Exit Function
+    s = UCase(CStr(v))
+    s = Replace(s, " ", ""): s = Replace(s, vbTab, "")
+    s = Replace(s, ChrW(12288), "")          ' ���� ����
+    ND_Key = s
+End Function
+
+
+
+'==========================================================
+' ���幰 �ֱ� : �� �̸� �Ʒ� ���� ���μ� + ���⼱ �� ����
+'==========================================================
+Sub UL_PostSheet(ByVal dS As Double, ByVal dE As Double)
+    If Not UL_ON Then Exit Sub
+    Dim uMs As Object, ent As Object, nObj As Object
+    Dim nT As Long, nLn As Long, i As Long, j As Long, k As Long
+    Dim tObj() As Object, tStr() As String, tX() As Double, tY() As Double
+    Dim tH() As Double, lObj() As Object
+    Dim xA As Double, xB As Double, mg As Double, tmp As Double
+    Dim oNm As String, s As String, ip As Variant
+    Dim iName As Long, bestDy As Double, dx As Double, dy As Double
+    Dim bMin As Variant, bMax As Variant
+    Dim nLft As Double, nRgt As Double, nBot As Double, iTop As Double
+    Dim yU As Double, hh As Double, xLft As Double, xRgt As Double
+    Dim sp As Variant, ep As Variant, kBest As Long, kEnd As Integer
+    Dim dd As Double, dBest As Double, oX As Double, xAtt As Double
+    Dim dup As Boolean
+    Dim p1(0 To 2) As Double, p2(0 To 2) As Double, pa(0 To 2) As Double
+
+    Set uMs = VN_MS()
+    If uMs Is Nothing Then Exit Sub
+    xA = XD(dS, dS): xB = XD(dE, dS)
+    If xB < xA Then tmp = xA: xA = xB: xB = tmp
+    mg = (xB - xA) * 0.15
+
+    nT = 0: nLn = 0
+    ReDim tObj(0 To 99): ReDim tStr(0 To 99): ReDim tX(0 To 99)
+    ReDim tY(0 To 99): ReDim tH(0 To 99): ReDim lObj(0 To 99)
+
+    On Error Resume Next
+    ' --- 1) ���ڿ� �� ������ ---
+    For Each ent In uMs
+        Err.Clear
+        oNm = "": oNm = UCase(ent.ObjectName)
+        If InStr(oNm, "TEXT") > 0 And InStr(oNm, "MTEXT") = 0 Then
+            ip = ent.InsertionPoint
+            If Err.Number = 0 Then
+                If ip(0) >= xA - mg And ip(0) <= xB + mg And Abs(Sin(ent.Rotation)) < 0.02 Then
+                    If nT > UBound(tStr) Then
+                        ReDim Preserve tObj(0 To nT + 99): ReDim Preserve tStr(0 To nT + 99)
+                        ReDim Preserve tX(0 To nT + 99): ReDim Preserve tY(0 To nT + 99)
+                        ReDim Preserve tH(0 To nT + 99)
+                    End If
+                    Set tObj(nT) = ent
+                    tStr(nT) = UCase(Replace(ent.TextString, " ", ""))
+                    tX(nT) = ip(0): tY(nT) = ip(1): tH(nT) = ent.Height
+                    nT = nT + 1
+                End If
+            End If
+        ElseIf Right(oNm, 6) = "DBLINE" Then
+            s = "": s = UCase(ent.Layer)
+            If Left(s, 7) = "PF_UTIL" Or ent.Color = 1 Then
+                sp = ent.StartPoint
+                If sp(0) >= xA - mg And sp(0) <= xB + mg Then
+                    If nLn > UBound(lObj) Then ReDim Preserve lObj(0 To nLn + 99)
+                    Set lObj(nLn) = ent
+                    nLn = nLn + 1
+                End If
+            End If
+        End If
+    Next ent
+    If nT = 0 Then Exit Sub
+
+    ' --- 2) INV.EL ���ڸ��� �� ��(�� �̸�) ã�� ���� ---
+    For i = 0 To nT - 1
+        If InStr(tStr(i), UL_KEY) > 0 Then
+            iName = -1: bestDy = 1E+30
+            For j = 0 To nT - 1
+                If j <> i And Left(tStr(j), 3) <> "NO." And InStr(tStr(j), UL_KEY) = 0 Then
+                    dx = tX(j) - tX(i): dy = tY(j) - tY(i)
+                    If dy > 0.3 * tH(i) And dy < 3 * tH(i) And Abs(dx) < 3 * tH(i) Then
+                        If dy < bestDy Then bestDy = dy: iName = j
+                    End If
+                End If
+            Next j
+
+            If iName >= 0 Then
+                hh = tH(iName)
+                ' �� �̸� ���� ����
+                Err.Clear
+                tObj(iName).GetBoundingBox bMin, bMax
+                If Err.Number = 0 Then
+                    nLft = bMin(0): nRgt = bMax(0): nBot = bMin(1)
+                Else
+                    nLft = tX(iName): nBot = tY(iName)
+                    nRgt = tX(iName) + Len(tStr(iName)) * hh * 0.85
+                End If
+                ' INV ���� ����
+                Err.Clear
+                tObj(i).GetBoundingBox bMin, bMax
+                If Err.Number = 0 Then
+                    iTop = bMax(1)
+                Else
+                    iTop = tY(i) + tH(i)
+                End If
+                If iTop < nBot Then
+                    yU = (nBot + iTop) / 2
+                Else
+                    yU = nBot - 0.25 * hh
+                End If
+                xLft = nLft - UL_PRE * hh
+                xRgt = nRgt + UL_EXT * hh
+
+                ' �̹� ������ ������ �ǳʶ�
+                dup = False
+                For k = 0 To nLn - 1
+                    sp = lObj(k).StartPoint: ep = lObj(k).EndPoint
+                    If Abs(sp(1) - yU) < 0.2 * hh And Abs(ep(1) - yU) < 0.2 * hh Then
+                        If Abs(sp(0) - ep(0)) > hh And _
+                           ((sp(0) + ep(0)) / 2) > xLft And ((sp(0) + ep(0)) / 2) < xRgt Then
+                            dup = True: Exit For
+                        End If
+                    End If
+                Next k
+
+                If Not dup Then
+                    ' �� �̸� �����̿��� ������ ���⼱ ã��
+                    kBest = -1: dBest = 4 * hh
+                    For k = 0 To nLn - 1
+                        sp = lObj(k).StartPoint: ep = lObj(k).EndPoint
+                        If Abs(sp(1) - ep(1)) > 0.2 * hh Then          ' ���μ� ����
+                            dd = Sqr((sp(0) - nLft) ^ 2 + (sp(1) - yU) ^ 2)
+                            If dd < dBest Then dBest = dd: kBest = k: kEnd = 0
+                            dd = Sqr((ep(0) - nLft) ^ 2 + (ep(1) - yU) ^ 2)
+                            If dd < dBest Then dBest = dd: kBest = k: kEnd = 1
+                            dd = Sqr((sp(0) - nRgt) ^ 2 + (sp(1) - yU) ^ 2)
+                            If dd < dBest Then dBest = dd: kBest = k: kEnd = 0
+                            dd = Sqr((ep(0) - nRgt) ^ 2 + (ep(1) - yU) ^ 2)
+                            If dd < dBest Then dBest = dd: kBest = k: kEnd = 1
+                        End If
+                    Next k
+
+                    p1(0) = xLft: p1(1) = yU: p1(2) = 0
+                    p2(0) = xRgt: p2(1) = yU: p2(2) = 0
+
+                    If kBest >= 0 Then
+                        ' ���⼱ ���� ���� ��(���幰 ��)���� �ű�
+                        If UL_MOVE_LEADER Then
+                            sp = lObj(kBest).StartPoint: ep = lObj(kBest).EndPoint
+                            If kEnd = 0 Then oX = ep(0) Else oX = sp(0)
+                            If oX > (nLft + nRgt) / 2 Then xAtt = xRgt Else xAtt = xLft
+                            pa(0) = xAtt: pa(1) = yU: pa(2) = 0
+                            If kEnd = 0 Then
+                                lObj(kBest).StartPoint = pa
+                            Else
+                                lObj(kBest).EndPoint = pa
+                            End If
+                        End If
+                        ' ���⼱�� ������ ���ٷ� (���̾�� ����)
+                        Err.Clear
+                        Set nObj = Nothing
+                        Set nObj = lObj(kBest).Copy
+                        If Not nObj Is Nothing Then
+                            nObj.StartPoint = p1
+                            nObj.EndPoint = p2
+                        End If
+                    Else
+                        Err.Clear
+                        Set nObj = Nothing
+                        Set nObj = uMs.AddLine(p1, p2)
+                        If Not nObj Is Nothing Then
+                            Err.Clear
+                            nObj.Layer = UL_LAYER
+                            If Err.Number <> 0 Then nObj.Color = 1
+                        End If
+                    End If
+                End If
+            End If
+        End If
+    Next i
+    On Error GoTo 0
+End Sub
+
+
