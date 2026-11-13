@@ -17,95 +17,95 @@ Option Explicit
 '=====================================================================================
 
 '────────────────────────── 0. 상수 ──────────────────────────
-Public Const PSHEET As String = "P"
-Public Const VSHEET As String = "검토_검증"
-Public Const PI As Double = 3.14159265358979
-Public Const TINY As Double = 0.0000001
+Private Const PSHEET As String = "P"
+Private Const VSHEET As String = "검토_검증"
+Private Const PI As Double = 3.14159265358979
+Private Const TINY As Double = 0.0000001
 
 '────────────────────────── 1. 단면 데이터 ──────────────────────────
-Public sN As Long
-Public sSta() As String          ' 측점 문자열 (토적표 B열 그대로)
-Public sGH() As Double           ' 지반고
-Public sInv() As Double          ' 관저고
-Public sDia() As Double          ' 관경 mm
-Public sCode() As String         ' OP02 / OP04 / OP01 / SC01 ...
-Public sSlope() As Double        ' 굴착경사 (SDB(H) G열)
+Private sN As Long
+Private sSta() As String          ' 측점 문자열 (토적표 B열 그대로)
+Private sGH() As Double           ' 지반고
+Private sInv() As Double          ' 관저고
+Private sDia() As Double          ' 관경 mm
+Private sCode() As String         ' OP02 / OP04 / OP01 / SC01 ...
+Private sSlope() As Double        ' 굴착경사 (SDB(H) G열)
 ' 표 블록 13개 값 (토적표)
-Public sExc() As Double, sWet() As Double, sAr() As Double, sAb() As Double
-Public sAsp() As Double, sCon() As Double, sAsc() As Double, sBodo() As Double
-Public sSand() As Double, sSub() As Double, sFrost() As Double
+Private sExc() As Double, sWet() As Double, sAr() As Double, sAb() As Double
+Private sAsp() As Double, sCon() As Double, sAsc() As Double, sBodo() As Double
+Private sSand() As Double, sSub() As Double, sFrost() As Double
 ' SDB(H) 원본 (매칭용)
-Public hN As Long
-Public hSta() As String, hGH() As Double, hInv() As Double, hDia() As Double
-Public hCode() As String, hSlope() As Double
-Public sB() As Double            ' 토적표 굴착폭 (CU)
+Private hN As Long
+Private hSta() As String, hGH() As Double, hInv() As Double, hDia() As Double
+Private hCode() As String, hSlope() As Double
+Private sB() As Double            ' 토적표 굴착폭 (CU)
 ' 매칭 결과
-Public sSrc() As String          ' "SDBH" / "TOKJUK"
-Public sVerIdx() As Long         ' 검증용 토적표 행번호
-Public sXD() As Variant          ' XDATA 8값 (토적표 CP..CW)
+Private sSrc() As String          ' "SDBH" / "TOKJUK"
+Private sVerIdx() As Long         ' 검증용 토적표 행번호
+Private sXD() As Variant          ' XDATA 8값 (토적표 CP..CW)
 
-' 단면 1개의 계산 결과  (UDT 대신 모듈 배열 ? VBA 호환성 우선)
-Public gD As Double, gH As Double, gb0 As Double, gtv As Double
-Public gzL As Double, gzP As Double, gB As Double
-Public ght As Double, ghb As Double
-Public gExc As Double, gWet As Double, gAr As Double, gAb As Double
-Public gSand As Double, gSub As Double, gFrost As Double
-Public gAsp As Double, gCon As Double, gAsc As Double, gBodo As Double
-Public gTopik As Double, gHasExc As Boolean
-Public gzRfil As Double, gRfilHalf As Double
-Public gNLay As Long
-Public gLayName() As String, gLayTh() As Double
-Public gLayKind() As String, gLayDisp() As String
+' 단면 1개의 계산 결과  (UDT 대신 모듈 배열 - VBA 호환성 우선)
+Private gD As Double, gH As Double, gb0 As Double, gtv As Double
+Private gzL As Double, gzP As Double, gB As Double
+Private ght As Double, ghb As Double
+Private gExc As Double, gWet As Double, gAr As Double, gAb As Double
+Private gSand As Double, gSub As Double, gFrost As Double
+Private gAsp As Double, gCon As Double, gAsc As Double, gBodo As Double
+Private gTopik As Double, gHasExc As Boolean
+Private gzRfil As Double, gRfilHalf As Double
+Private gNLay As Long
+Private gLayName() As String, gLayTh() As Double
+Private gLayKind() As String, gLayDisp() As String
 
 '────────────────────────── 2. 파라미터 ──────────────────────────
 ' [배치]
-Public pNCol As Long, pNRow As Long
-Public pSheetW As Double, pPitchX As Double, pPitchY As Double
-Public pOffX As Double, pOffY As Double
-Public pPickBase As Boolean, pBaseX As Double, pBaseY As Double
+Private pNCol As Long, pNRow As Long
+Private pSheetW As Double, pPitchX As Double, pPitchY As Double
+Private pOffX As Double, pOffY As Double
+Private pPickBase As Boolean, pBaseX As Double, pBaseY As Double
 ' [소스]
-Public pSrcGeom As String        ' SDBH / TOKJUK / AUTO
+Private pSrcGeom As String        ' SDBH / TOKJUK / AUTO
 ' [블록]
-Public pBlkTable As String, pBlkBorder As String, pBlkTitle As String, pBlkDot As String
-Public pBlkScale As Double, pDotScale As Double, pTblDX As Double
-Public pBorderXref As String, pBorderW As Double, pBorderH As Double, pBorderFallback As Boolean
+Private pBlkTable As String, pBlkBorder As String, pBlkTitle As String, pBlkDot As String
+Private pBlkScale As Double, pDotScale As Double, pTblDX As Double
+Private pBorderXref As String, pBorderW As Double, pBorderH As Double, pBorderFallback As Boolean
 ' [레이어]
-Public pLayCent As String, pLayGrnd As String, pLayPave As String, pLayExcv As String
-Public pLayRfil As String, pLayPipe As String, pLayPatt As String, pLayLead As String
-Public pLayLeat As String, pLayLeal As String, pLayDiml As String, pLayText As String
-Public pLayTabl As String, pLayBorder As String, pLayTitle As String
-Public cCent As Long, cGrnd As Long, cPave As Long, cExcv As Long, cRfil As Long
-Public cPipe As Long, cPatt As Long, cLead As Long, cLeat As Long, cLeal As Long
-Public cDiml As Long, cText As Long, cTabl As Long, cBorder As Long, cTitle As Long
+Private pLayCent As String, pLayGrnd As String, pLayPave As String, pLayExcv As String
+Private pLayRfil As String, pLayPipe As String, pLayPatt As String, pLayLead As String
+Private pLayLeat As String, pLayLeal As String, pLayDiml As String, pLayText As String
+Private pLayTabl As String, pLayBorder As String, pLayTitle As String
+Private cCent As Long, cGrnd As Long, cPave As Long, cExcv As Long, cRfil As Long
+Private cPipe As Long, cPatt As Long, cLead As Long, cLeat As Long, cLeal As Long
+Private cDiml As Long, cText As Long, cTabl As Long, cBorder As Long, cTitle As Long
 ' [문자]
-Public pTxtEl As Double, pTxtDim As Double, pTxtPave As Double, pTxtLine As Double
-Public pFont As String, pTitleFmt As String, pDwgPrefix As String, pDwgStart As Long
-Public pScaleH As String, pScaleA1 As String, pLineName As String, pTxtWF As Double
+Private pTxtEl As Double, pTxtDim As Double, pTxtPave As Double, pTxtLine As Double
+Private pFont As String, pTitleFmt As String, pDwgPrefix As String, pDwgStart As Long
+Private pScaleH As String, pScaleA1 As String, pLineName As String, pTxtWF As Double
 ' [형상]
-Public pSlope As Double
-Public pBw80 As Double, pBw100 As Double, pBw160 As Double, pBwOther As Double
-Public pPave02 As String, pPave04 As String
-Public pHatchMin As Double, pHatchPat As String, pHatchScale As Double
-Public pNegZero As Boolean, pRfilClamp As Boolean
-Public pElBotOff As Long, pElTopMin As Long
-Public pGrndHalf As Double, pTickHalf As Double
-Public pDetailDim As Boolean, pDetailBottom As Boolean, pLeaderAll As Boolean
+Private pSlope As Double
+Private pBw80 As Double, pBw100 As Double, pBw160 As Double, pBwOther As Double
+Private pPave02 As String, pPave04 As String
+Private pHatchMin As Double, pHatchPat As String, pHatchScale As Double
+Private pNegZero As Boolean, pRfilClamp As Boolean
+Private pElBotOff As Long, pElTopMin As Long
+Private pGrndHalf As Double, pTickHalf As Double
+Private pDetailDim As Boolean, pDetailBottom As Boolean, pLeaderAll As Boolean
 ' [출력]
-Public pWriteXdata As Boolean, pXdataApp As String
-Public pShSdbH As String, pShTokjuk As String
-Public pVerify As Boolean, pDbgSkipDraw As Boolean
+Private pWriteXdata As Boolean, pXdataApp As String
+Private pShSdbH As String, pShTokjuk As String
+Private pVerify As Boolean, pDbgSkipDraw As Boolean
 
-Public pReadFail As Long
+Private pReadFail As Long
 
 '────────────────────────── 3. CAD ──────────────────────────
-Public acad As Object, doc As Object, ms As Object
-Public cadAppName As String
-Public gBaseX As Double, gBaseY As Double
-Public gCellX As Double, gCellY As Double
-Public gScale As Double
+Private acad As Object, doc As Object, ms As Object
+Private cadAppName As String
+Private gBaseX As Double, gBaseY As Double
+Private gCellX As Double, gCellY As Double
+Private gScale As Double
 
 '────────────────────────── 4. 로그 ──────────────────────────
-Public gErr As Collection, gWarn As Collection
+Private gErr As Collection, gWarn As Collection
 
 '=====================================================================================
 '  파라미터 기본값
@@ -176,7 +176,7 @@ Public Sub 횡단_P시트생성()
     End If
     InitParams
 
-    ws.Range("A1").Value = "상수관로 횡단면도 작도 파라미터  ?  B열 값만 수정하세요"
+    ws.Range("A1").Value = "상수관로 횡단면도 작도 파라미터  -  B열 값만 수정하세요"
     ws.Range("A1").Font.Bold = True
     ws.Range("A1").Font.Size = 13
     ws.Range("A2:D2").Value = Array("코드", "값", "단위", "설명")
@@ -505,10 +505,10 @@ End Sub
 '  2) 없으면 새로 실행한다(CreateObject)
 '  3) ZWCAD 를 AutoCAD 보다 먼저 시도한다(국내 관급설계 배포본 우선)
 '=====================================================================================
-Public Function ConnectCAD() As Boolean
+Public Function xcConnectCAD() As Boolean
     Dim cand As Variant, i As Long, pid As String
     Dim found As Object
-    ConnectCAD = False
+    xcConnectCAD = False
     cadAppName = ""
 
     ' ZWCAD 계열 -> AutoCAD 계열 -> 기타 순
@@ -588,7 +588,7 @@ Public Function ConnectCAD() As Boolean
     End If
     On Error GoTo 0
 
-    ConnectCAD = True
+    xcConnectCAD = True
 End Function
 
 ' 문자 스타일 확보 (없으면 만든다)
@@ -649,29 +649,29 @@ End Sub
 '=====================================================================================
 '  원시 작도 함수
 '=====================================================================================
-Private Function P3(ByVal x As Double, ByVal y As Double) As Variant
-    P3 = Array(x, y, 0#)
+Private Function xcP3(ByVal x As Double, ByVal y As Double) As Variant
+    xcP3 = Array(x, y, 0#)
 End Function
 
-Private Function PL_Line(ByVal x1 As Double, ByVal y1 As Double, _
+Private Function xcLine(ByVal x1 As Double, ByVal y1 As Double, _
                          ByVal x2 As Double, ByVal y2 As Double, _
                          ByVal lay As String) As Object
     Dim e As Object
-    Set PL_Line = Nothing
+    Set xcLine = Nothing
     On Error Resume Next
-    Set e = ms.AddLine(P3(x1, y1), P3(x2, y2))
+    Set e = ms.AddLine(xcP3(x1, y1), xcP3(x2, y2))
     If Err.Number <> 0 Then Err.Clear: Exit Function
     On Error GoTo 0
     If Len(lay) > 0 Then e.Layer = lay
-    Set PL_Line = e
+    Set xcLine = e
 End Function
 
 ' pts = "x1,y1;x2,y2;..."  (2D)
-Private Function PL_Poly(ByVal pts As String, ByVal lay As String, _
+Private Function xcPoly(ByVal pts As String, ByVal lay As String, _
                          Optional ByVal bClosed As Boolean = False) As Object
     Dim a() As Double, f As Variant, i As Long, m As Long
     Dim e As Object
-    Set PL_Poly = Nothing
+    Set xcPoly = Nothing
     f = Split(pts, ";")
     m = -1
     ReDim a(0 To (UBound(f) + 1) * 2 - 1)
@@ -691,14 +691,14 @@ Private Function PL_Poly(ByVal pts As String, ByVal lay As String, _
     On Error GoTo 0
     If bClosed Then e.Closed = True
     If Len(lay) > 0 Then e.Layer = lay
-    Set PL_Poly = e
+    Set xcPoly = e
 End Function
 
 ' 원시 좌표 배열로 폴리라인
-Private Function PL_PolyA(ByRef a() As Double, ByVal n As Long, ByVal lay As String, _
+Private Function xcPolyA(ByRef a() As Double, ByVal n As Long, ByVal lay As String, _
                           Optional ByVal bClosed As Boolean = False) As Object
     Dim e As Object, a2() As Double, i As Long
-    Set PL_PolyA = Nothing
+    Set xcPolyA = Nothing
     If n < 2 Then Exit Function
     ReDim a2(0 To n * 2 - 1)
     For i = 0 To n - 1
@@ -711,7 +711,7 @@ Private Function PL_PolyA(ByRef a() As Double, ByVal n As Long, ByVal lay As Str
     On Error GoTo 0
     If bClosed Then e.Closed = True
     If Len(lay) > 0 Then e.Layer = lay
-    Set PL_PolyA = e
+    Set xcPolyA = e
 End Function
 
 ' AL_* : 0=좌하  9=중앙좌  10=중앙중심  11=중앙우  13=하중앙
@@ -721,15 +721,15 @@ Private Const AL_MCTR As Long = 10
 Private Const AL_MRGT As Long = 11
 Private Const AL_BCTR As Long = 13
 
-Private Function PL_Text(ByVal s As String, ByVal x As Double, ByVal y As Double, _
+Private Function xcText(ByVal s As String, ByVal x As Double, ByVal y As Double, _
                          ByVal h As Double, ByVal lay As String, _
                          Optional ByVal rot As Double = 0#, _
                          Optional ByVal al As Long = AL_LEFT, _
                          Optional ByVal rotGiven As Boolean = True) As Object
     Dim e As Object
-    Set PL_Text = Nothing
+    Set xcText = Nothing
     On Error Resume Next
-    Set e = ms.AddText(s, P3(x, y), h)
+    Set e = ms.AddText(s, xcP3(x, y), h)
     If Err.Number <> 0 Then Err.Clear: Exit Function
     On Error GoTo 0
     If Len(lay) > 0 Then e.Layer = lay
@@ -747,23 +747,23 @@ Private Function PL_Text(ByVal s As String, ByVal x As Double, ByVal y As Double
     If al <> AL_LEFT Then
         On Error Resume Next
         e.Alignment = al
-        e.TextAlignmentPoint = P3(x, y)
+        e.TextAlignmentPoint = xcP3(x, y)
         On Error GoTo 0
     End If
-    Set PL_Text = e
+    Set xcText = e
 End Function
 
-Private Function PL_Circle(ByVal cx As Double, ByVal cy As Double, ByVal r As Double, _
+Private Function xcCircle(ByVal cx As Double, ByVal cy As Double, ByVal r As Double, _
                            ByVal lay As String) As Object
     Dim e As Object
-    Set PL_Circle = Nothing
+    Set xcCircle = Nothing
     If r <= 0 Then Exit Function
     On Error Resume Next
-    Set e = ms.AddCircle(P3(cx, cy), r)
+    Set e = ms.AddCircle(xcP3(cx, cy), r)
     If Err.Number <> 0 Then Err.Clear: Exit Function
     On Error GoTo 0
     If Len(lay) > 0 Then e.Layer = lay
-    Set PL_Circle = e
+    Set xcCircle = e
 End Function
 
 '=====================================================================================
@@ -808,18 +808,18 @@ Private Sub DrawSection(ByVal k As Long)
     SecCalc k
 
     ' ---- 1) 중심틱 ----
-    PL_Line cx, cy + pTickHalf, cx, cy - pTickHalf, pLayCent
+    xcLine cx, cy + pTickHalf, cx, cy - pTickHalf, pLayCent
 
     ' ---- 2) 지반선 (좌/우 2개) ----
-    PL_Poly cx & "," & cy & ";" & (cx - pGrndHalf) & "," & cy, pLayGrnd
-    PL_Poly cx & "," & cy & ";" & (cx + pGrndHalf) & "," & cy, pLayGrnd
+    xcPoly cx & "," & cy & ";" & (cx - pGrndHalf) & "," & cy, pLayGrnd
+    xcPoly cx & "," & cy & ";" & (cx + pGrndHalf) & "," & cy, pLayGrnd
 
     ' ---- 3) 포장층 경계 ----
     z = 0#
     For i = 0 To gNLay - 1
         z = z + gLayTh(i)
-        PL_Poly cx & "," & (cy - z) & ";" & (cx - pGrndHalf) & "," & (cy - z), pLayPave
-        PL_Poly cx & "," & (cy - z) & ";" & (cx + pGrndHalf) & "," & (cy - z), pLayPave
+        xcPoly cx & "," & (cy - z) & ";" & (cx - pGrndHalf) & "," & (cy - z), pLayPave
+        xcPoly cx & "," & (cy - z) & ";" & (cx + pGrndHalf) & "," & (cy - z), pLayPave
     Next i
 
     ' ---- 4) 굴착 폴리곤 ----
@@ -839,15 +839,15 @@ Private Sub DrawSection(ByVal k As Long)
         pts = pts & ";" & Pt(cx + ghb, cy - gH)
         pts = pts & ";" & Pt(cx + ghb, cy - gH)
         pts = pts & ";" & Pt(cx + 0#, cy - gH)
-        Set poly = PL_Poly(pts, pLayExcv, False)
+        Set poly = xcPoly(pts, pLayExcv, False)
     End If
 
     ' ---- 5) 관원 ----
-    Set circ = PL_Circle(cx, cy - (gH - gD / 2#), gD / 2#, pLayPipe)
+    Set circ = xcCircle(cx, cy - (gH - gD / 2#), gD / 2#, pLayPipe)
 
     ' ---- 6) 관저 기준선 (RFIL) ----
     If gHasExc And gzRfil > 0# Then
-        PL_Line cx - gRfilHalf, cy - gzRfil, cx + gRfilHalf, cy - gzRfil, pLayRfil
+        xcLine cx - gRfilHalf, cy - gzRfil, cx + gRfilHalf, cy - gzRfil, pLayRfil
     End If
 
     ' ---- 7) 해치 (관주위 되메우기 영역) ----
@@ -1304,8 +1304,8 @@ Private Function Wz(ByVal z As Double) As Double
     Wz = gb0 + 2# * gSlp * (gH - z)
 End Function
 
-Public gCurK As Long
-Public gSlp As Double
+Private gCurK As Long
+Private gSlp As Double
 
 Private Sub SecCalc(ByVal k As Long)
     Dim D As Double, H As Double, b0 As Double
@@ -1408,7 +1408,7 @@ Private Sub SecCalc(ByVal k As Long)
 End Sub
 
 '=====================================================================================
-'  12. 해치 (관주위 되메우기)  ? 사다리꼴(바닥 b0/2 -> 상단 w(y)/2) - 관원
+'  12. 해치 (관주위 되메우기)  - 사다리꼴(바닥 b0/2 -> 상단 w(y)/2) - 관원
 '      원본과 동일: 외곽=선 4개, 내곽=원 1개, ANSI31, 축척 0.02
 '=====================================================================================
 Private Sub HatchBackfill(ByVal cx As Double, ByVal cy As Double, ByVal circ As Object)
@@ -1423,7 +1423,7 @@ Private Sub HatchBackfill(ByVal cx As Double, ByVal cy As Double, ByVal circ As 
     ' 임시 폴리라인(닫힌 사다리꼴) -> 해치 외곽 -> 삭제
     pts = Pt(cx - ghb, cy - gH) & ";" & Pt(cx - yh, cy - y) & ";" & _
           Pt(cx + yh, cy - y) & ";" & Pt(cx + ghb, cy - gH) & ";" & Pt(cx - ghb, cy - gH)
-    Set tmp = PL_Poly(pts, pLayPatt, False)
+    Set tmp = xcPoly(pts, pLayPatt, False)
     If tmp Is Nothing Then Exit Sub
 
     On Error Resume Next
@@ -1452,7 +1452,7 @@ Private Sub HatchBackfill(ByVal cx As Double, ByVal cy As Double, ByVal circ As 
 End Sub
 
 '=====================================================================================
-'  13. 표 블록 (관로06) ? 15개 속성 + Tojuk XDATA
+'  13. 표 블록 (관로06) - 15개 속성 + Tojuk XDATA
 '=====================================================================================
 Private Sub DrawTableBlock(ByVal cx As Double, ByVal cy As Double, ByVal k As Long)
     Dim blk As Object, v As Variant, i As Long
@@ -1462,7 +1462,7 @@ Private Sub DrawTableBlock(ByVal cx As Double, ByVal cy As Double, ByVal k As Lo
 
     Set blk = Nothing
     On Error Resume Next
-    Set blk = ms.InsertBlock(P3(cx + pTblDX, cy), pBlkTable, pBlkScale, pBlkScale, pBlkScale, 0#)
+    Set blk = ms.InsertBlock(xcP3(cx + pTblDX, cy), pBlkTable, pBlkScale, pBlkScale, pBlkScale, 0#)
     If Err.Number <> 0 Then
         Err.Clear
         On Error GoTo 0
@@ -1522,7 +1522,7 @@ Private Sub DrawTableBlock(ByVal cx As Double, ByVal cy As Double, ByVal k As Lo
 End Sub
 
 '=====================================================================================
-'  14. 고도축  ? 하단 = floor(INV) - EL_BOT_OFF, 상단 = 하단 + EL_TOP_MIN + floor(H)
+'  14. 고도축  - 하단 = floor(INV) - EL_BOT_OFF, 상단 = 하단 + EL_TOP_MIN + floor(H)
 '=====================================================================================
 Private Sub DrawElAxis(ByVal cx As Double, ByVal cy As Double, ByVal k As Long)
     Dim bot As Double, top As Double, z As Double
@@ -1544,18 +1544,18 @@ Private Sub DrawElAxis(ByVal cx As Double, ByVal cy As Double, ByVal k As Long)
     If yt <= yb Then yt = yb + 1#
 
     ' 축선
-    PL_Line xax, yb, xax, yt, pLayDiml
+    xcLine xax, yb, xax, yt, pLayDiml
 
     ' 눈금 (1 m 간격)
     z = bot
     Do While z <= top + 0.0000001
-        PL_Line xax, cy + (z - gh), xax - 0.4, cy + (z - gh), pLayDiml
+        xcLine xax, cy + (z - gh), xax - 0.4, cy + (z - gh), pLayDiml
         z = z + 1#
     Loop
 
     ' 상·하 단 2개만 숫자 표기 (우측 정렬)
-    PL_Text FmtInt(bot), cx - 5#, yb, pTxtEl, pLayText, 0#, AL_MRGT
-    PL_Text FmtInt(top), cx - 5#, yt, pTxtEl, pLayText, 0#, AL_MRGT
+    xcText FmtInt(bot), cx - 5#, yb, pTxtEl, pLayText, 0#, AL_MRGT
+    xcText FmtInt(top), cx - 5#, yt, pTxtEl, pLayText, 0#, AL_MRGT
 End Sub
 
 ' 정수 표기용 (고도축 눈금 숫자)
@@ -1576,21 +1576,21 @@ Private Sub DrawDetailDim(ByVal cx As Double, ByVal cy As Double)
 
     ' ---- A) B= 폭 치수 : y=+1.9, 반폭 = ght ----
     If True Then
-        PL_Line cx - ght, cy + 1.9, cx + ght, cy + 1.9, pLayLead
-        PL_Line cx - ght, cy + 1.9, cx - ght, cy + 1.5, pLayLead
-        PL_Line cx + ght, cy + 1.9, cx + ght, cy + 1.5, pLayLead
+        xcLine cx - ght, cy + 1.9, cx + ght, cy + 1.9, pLayLead
+        xcLine cx - ght, cy + 1.9, cx - ght, cy + 1.5, pLayLead
+        xcLine cx + ght, cy + 1.9, cx + ght, cy + 1.5, pLayLead
         Dot cx - ght, cy + 1.9
         Dot cx + ght, cy + 1.9
-        PL_Text "B=" & Format$(gB, "0.00") & "m", cx, cy + 2.1, pTxtDim, pLayLeat, 0#, AL_MCTR
+        xcText "B=" & Format$(gB, "0.00") & "m", cx, cy + 2.1, pTxtDim, pLayLeat, 0#, AL_MCTR
     End If
 
     ' ---- B) H= 높이 치수 : x=-1.9 ----
-    PL_Line cx - 1.9, cy, cx - 1.9, cy - gH, pLayLead
-    PL_Line cx - 1.9, cy, cx - 1.5, cy, pLayLead
-    PL_Line cx - 1.9, cy - gH, cx - 1.5, cy - gH, pLayLead
+    xcLine cx - 1.9, cy, cx - 1.9, cy - gH, pLayLead
+    xcLine cx - 1.9, cy, cx - 1.5, cy, pLayLead
+    xcLine cx - 1.9, cy - gH, cx - 1.5, cy - gH, pLayLead
     Dot cx - 1.9, cy
     Dot cx - 1.9, cy - gH
-    PL_Text "H=" & Format$(gH, "0.00") & "m", cx - 2.1, cy - gH / 2#, pTxtDim, pLayLeat, 90#, AL_MCTR
+    xcText "H=" & Format$(gH, "0.00") & "m", cx - 2.1, cy - gH / 2#, pTxtDim, pLayLeat, 90#, AL_MCTR
 
     ' ---- C) 저부 치수 ----
     If pDetailBottom Then
@@ -1598,12 +1598,12 @@ Private Sub DrawDetailDim(ByVal cx As Double, ByVal cy As Double)
         d = cy - gH - 1.4
         bw = BwOf(sDia(gCurK))
 
-        PL_Line cx - ghb, d, cx + ghb, d, pLayLead
-        PL_Line cx - ghb, y, cx - ghb, d, pLayLead
-        PL_Line cx + ghb, y, cx + ghb, d, pLayLead
+        xcLine cx - ghb, d, cx + ghb, d, pLayLead
+        xcLine cx - ghb, y, cx - ghb, d, pLayLead
+        xcLine cx + ghb, y, cx + ghb, d, pLayLead
         If bw > TINY Then
-            PL_Line cx - ghb + bw, y, cx - ghb + bw, d, pLayLead
-            PL_Line cx + ghb - bw, y, cx + ghb - bw, d, pLayLead
+            xcLine cx - ghb + bw, y, cx - ghb + bw, d, pLayLead
+            xcLine cx + ghb - bw, y, cx + ghb - bw, d, pLayLead
             Dot cx - ghb + bw, d
             Dot cx + ghb - bw, d
         End If
@@ -1612,9 +1612,9 @@ Private Sub DrawDetailDim(ByVal cx As Double, ByVal cy As Double)
 
         x = ghb + 0.1
         If bw <= TINY Then x = ghb + 0.2
-        PL_Text Format$(bw * 1000#, "0"), cx - x, cy - gH - 1.6, pTxtPave, pLayLeat, 0#, AL_MCTR
-        PL_Text Format$(bw * 1000#, "0"), cx + x, cy - gH - 1.6, pTxtPave, pLayLeat, 0#, AL_MCTR
-        PL_Text Format$(gD * 1000#, "0"), cx, cy - gH - 1.2, pTxtPave, pLayLeat, 0#, AL_MCTR
+        xcText Format$(bw * 1000#, "0"), cx - x, cy - gH - 1.6, pTxtPave, pLayLeat, 0#, AL_MCTR
+        xcText Format$(bw * 1000#, "0"), cx + x, cy - gH - 1.6, pTxtPave, pLayLeat, 0#, AL_MCTR
+        xcText Format$(gD * 1000#, "0"), cx, cy - gH - 1.2, pTxtPave, pLayLeat, 0#, AL_MCTR
     End If
 
     ' ---- D) 외측 폭 치수 (우측) ----
@@ -1623,20 +1623,20 @@ Private Sub DrawDetailDim(ByVal cx As Double, ByVal cy As Double)
     x = ght + 0.45
     If x < 0.88 Then x = 0.88
 
-    PL_Line cx + x, y, cx + x, d, pLayLead
-    PL_Line cx + x - 0.4, y, cx + x, y, pLayLead
-    PL_Line cx + x - 0.4, d, cx + x, d, pLayLead
+    xcLine cx + x, y, cx + x, d, pLayLead
+    xcLine cx + x - 0.4, y, cx + x, y, pLayLead
+    xcLine cx + x - 0.4, d, cx + x, d, pLayLead
     Dot cx + x, y
     Dot cx + x, d
 
-    PL_Text "0", cx + x + 0.2, y + 0.2, pTxtPave, pLayLeat, 90#, AL_MCTR
-    PL_Text Format$(gD * 1000#, "0"), cx + x - 0.2, (y + d) / 2#, pTxtPave, pLayLeat, 90#, AL_MCTR
-    PL_Text "0", cx + x + 0.2, d - 0.2, pTxtPave, pLayLeat, 90#, AL_MCTR
+    xcText "0", cx + x + 0.2, y + 0.2, pTxtPave, pLayLeat, 90#, AL_MCTR
+    xcText Format$(gD * 1000#, "0"), cx + x - 0.2, (y + d) / 2#, pTxtPave, pLayLeat, 90#, AL_MCTR
+    xcText "0", cx + x + 0.2, d - 0.2, pTxtPave, pLayLeat, 90#, AL_MCTR
 End Sub
 
 Private Sub Dot(ByVal x As Double, ByVal y As Double)
     On Error Resume Next
-    ms.InsertBlock P3(x, y), pBlkDot, pDotScale, pDotScale, pDotScale, 0#
+    ms.InsertBlock xcP3(x, y), pBlkDot, pDotScale, pDotScale, pDotScale, 0#
     If Err.Number <> 0 Then Err.Clear
     On Error GoTo 0
 End Sub
@@ -1663,12 +1663,12 @@ Private Sub DrawPaveLeader(ByVal cx As Double, ByVal cy As Double)
     Next i
 
     top = lastMid + 2.5
-    PL_Line xv, lastMid, xv, top, pLayLeal
+    xcLine xv, lastMid, xv, top, pLayLeal
 
     For i = 0 To gNLay - 1
         yt = top - 0.3 * i
-        PL_Line xv, yt, xv + 0.5, yt, pLayLeal
-        PL_Text gLayDisp(i) & "(T=" & Format$(gLayTh(i) * 1000#, "0") & ")", _
+        xcLine xv, yt, xv + 0.5, yt, pLayLeal
+        xcText gLayDisp(i) & "(T=" & Format$(gLayTh(i) * 1000#, "0") & ")", _
                 xv + 0.5, yt - 0.1, pTxtPave, pLayLeat, 0#, AL_MLFT
     Next i
 End Sub
@@ -1691,7 +1691,7 @@ Private Sub DrawSheetBorder(ByVal n As Long)
 
     ' 2) 블록 삽입
     On Error Resume Next
-    Set blk = ms.InsertBlock(P3(ox, oy), pBlkBorder, pBlkScale, pBlkScale, pBlkScale, 0#)
+    Set blk = ms.InsertBlock(xcP3(ox, oy), pBlkBorder, pBlkScale, pBlkScale, pBlkScale, 0#)
     If Err.Number = 0 And Not blk Is Nothing Then
         blk.Layer = pLayBorder
         On Error GoTo 0
@@ -1702,7 +1702,7 @@ Private Sub DrawSheetBorder(ByVal n As Long)
 
     ' 3) 외곽선 직접 작도
     If pBorderFallback Then
-        PL_Poly Pt(ox, oy) & ";" & Pt(ox + pBorderW, oy) & ";" & _
+        xcPoly Pt(ox, oy) & ";" & Pt(ox + pBorderW, oy) & ";" & _
                 Pt(ox + pBorderW, oy + pBorderH) & ";" & Pt(ox, oy + pBorderH), _
                 pLayBorder, True
         AddWarn "도곽 블록(" & pBlkBorder & ")이 없어 외곽선으로 대체했습니다 (시트 " & n & ")"
@@ -1713,9 +1713,9 @@ Private Function XrefBorder(ByVal ox As Double, ByVal oy As Double) As Boolean
     Dim blk As Object, xr As Object
     XrefBorder = False
     On Error Resume Next
-    Set blk = doc.Blocks.Add(P3(0#, 0#), "TMP_BORDER_XREF")
+    Set blk = doc.Blocks.Add(xcP3(0#, 0#), "TMP_BORDER_XREF")
     If Err.Number <> 0 Then Err.Clear: Exit Function
-    Set xr = blk.AttachExternalReference(pBorderXref, "XREF_BORDER_TPL", P3(0#, 0#), 1#, 1#, 1#, 0#, False)
+    Set xr = blk.AttachExternalReference(pBorderXref, "XREF_BORDER_TPL", xcP3(0#, 0#), 1#, 1#, 1#, 0#, False)
     If Err.Number <> 0 Then
         Err.Clear
         doc.Blocks.Item("TMP_BORDER_XREF").Delete
@@ -1725,7 +1725,7 @@ Private Function XrefBorder(ByVal ox As Double, ByVal oy As Double) As Boolean
     End If
     ' 템플릿 블록을 각 시트 위치에 삽입
     Dim b As Object
-    Set b = ms.InsertBlock(P3(ox, oy), "TMP_BORDER_XREF", pBlkScale, pBlkScale, pBlkScale, 0#)
+    Set b = ms.InsertBlock(xcP3(ox, oy), "TMP_BORDER_XREF", pBlkScale, pBlkScale, pBlkScale, 0#)
     If Err.Number = 0 And Not b Is Nothing Then
         b.Layer = pLayBorder
         XrefBorder = True
@@ -1743,7 +1743,7 @@ Private Sub DrawSheetTitle(ByVal n As Long)
 
     Set blk = Nothing
     On Error Resume Next
-    Set blk = ms.InsertBlock(P3(ox, oy), pBlkTitle, pBlkScale, pBlkScale, pBlkScale, 0#)
+    Set blk = ms.InsertBlock(xcP3(ox, oy), pBlkTitle, pBlkScale, pBlkScale, pBlkScale, 0#)
     If Err.Number <> 0 Then
         Err.Clear
         On Error GoTo 0
@@ -1778,10 +1778,10 @@ End Function
 '=====================================================================================
 '  18. 기준점 선택
 '=====================================================================================
-Private Function PickBase() As Boolean
+Private Function xcPickBase() As Boolean
     Dim p As Variant
     Dim msg As String
-    PickBase = False
+    xcPickBase = False
 
     On Error Resume Next
     acad.Visible = True
@@ -1807,13 +1807,13 @@ Private Function PickBase() As Boolean
 
     gBaseX = CDbl(p(0))
     gBaseY = CDbl(p(1))
-    PickBase = True
+    xcPickBase = True
 End Function
 
 '=====================================================================================
 '  19. 검증 시트 (검토_검증)
 '=====================================================================================
-Private Sub WriteCheck()
+Private Sub xcWriteCheck()
     Dim ws As Worksheet, r As Long, i As Long
     Dim nBad As Long
 
@@ -1909,7 +1909,7 @@ End Sub
 ' (1) 데이터만 검증
 Public Sub 횡단_1단계_검증()
     If LoadData() Then
-        WriteCheck
+        xcWriteCheck
         MsgBox "검증 완료" & vbLf & vbLf & _
                "· 단면 수 : " & sN & vbLf & _
                "· 결과 시트 : " & VSHEET, vbInformation, "1단계 검증"
@@ -1933,10 +1933,10 @@ Public Sub 횡단_작도()
           "계속할까요?"
     If MsgBox(msg, vbYesNo + vbQuestion, "횡단면도 작도") <> vbYes Then Exit Sub
 
-    If Not ConnectCAD() Then Exit Sub
+    If Not xcConnectCAD() Then Exit Sub
 
     If pPickBase Then
-        If Not PickBase() Then Exit Sub
+        If Not xcPickBase() Then Exit Sub
     Else
         gBaseX = pBaseX: gBaseY = pBaseY
     End If
@@ -1948,7 +1948,7 @@ Public Sub 횡단_작도()
     CreateDotBlock
 
     If pDbgSkipDraw Then
-        WriteCheck
+        xcWriteCheck
         MsgBox "DBG_SKIP_DRAW = TRUE 이므로 작도하지 않았습니다.", vbInformation, "테스트"
         Exit Sub
     End If
@@ -1972,7 +1972,7 @@ Public Sub 횡단_작도()
     Application.StatusBar = False
     On Error GoTo 0
 
-    If pVerify Then WriteCheck
+    If pVerify Then xcWriteCheck
 
     On Error Resume Next
     doc.Regen 1
@@ -1994,7 +1994,7 @@ Public Sub 횡단_블록갱신()
     Dim s As String
 
     If Not LoadData() Then Exit Sub
-    If Not ConnectCAD() Then Exit Sub
+    If Not xcConnectCAD() Then Exit Sub
 
     For Each e In ms
         If e.EntityName = "AcDbBlockReference" Then
@@ -2071,7 +2071,7 @@ Public Sub 횡단_도곽확인()
     Dim s As String
     Dim b As Object
 
-    If Not ConnectCAD() Then Exit Sub
+    If Not xcConnectCAD() Then Exit Sub
 
     For Each e In ms
         If e.EntityName = "AcDbBlockReference" Then
@@ -2141,7 +2141,7 @@ Public Sub CreateTableBlock()
     Dim blk As Object, e As Object, at As Object
     If BlockExists(pBlkTable) Then Exit Sub
     On Error Resume Next
-    Set blk = doc.Blocks.Add(P3(0#, 0#), pBlkTable)
+    Set blk = doc.Blocks.Add(xcP3(0#, 0#), pBlkTable)
     If Err.Number <> 0 Then Err.Clear: Exit Sub
     On Error GoTo 0
 
@@ -2155,137 +2155,137 @@ Public Sub CreateTableBlock()
     e.Closed = True
 
     ' --- 내부 구분선 15개 ---
-    blk.AddLine P3(35, -4.4), P3(35, -35.2)
-    blk.AddLine P3(57, -4.4), P3(57, -35.2)
-    blk.AddLine P3(46, -4.4), P3(46, -22)
-    blk.AddLine P3(11, -17.6), P3(11, -35.2)
-    blk.AddLine P3(0, -17.6), P3(35, -17.6)
-    blk.AddLine P3(11, -22), P3(70, -22)
-    blk.AddLine P3(0, -8.8), P3(35, -8.8)
-    blk.AddLine P3(0, -26.4), P3(70, -26.4)
-    blk.AddLine P3(22, -4.4), P3(22, -35.2)
-    blk.AddLine P3(0, -4.4), P3(70, -4.4)
-    blk.AddLine P3(46, -17.6), P3(70, -17.6)
-    blk.AddLine P3(46, -13.2), P3(70, -13.2)
-    blk.AddLine P3(46, -8.8), P3(70, -8.8)
-    blk.AddLine P3(11, -30.8), P3(70, -30.8)
-    blk.AddLine P3(0, -13.2), P3(35, -13.2)
+    blk.AddLine xcP3(35, -4.4), xcP3(35, -35.2)
+    blk.AddLine xcP3(57, -4.4), xcP3(57, -35.2)
+    blk.AddLine xcP3(46, -4.4), xcP3(46, -22)
+    blk.AddLine xcP3(11, -17.6), xcP3(11, -35.2)
+    blk.AddLine xcP3(0, -17.6), xcP3(35, -17.6)
+    blk.AddLine xcP3(11, -22), xcP3(70, -22)
+    blk.AddLine xcP3(0, -8.8), xcP3(35, -8.8)
+    blk.AddLine xcP3(0, -26.4), xcP3(70, -26.4)
+    blk.AddLine xcP3(22, -4.4), xcP3(22, -35.2)
+    blk.AddLine xcP3(0, -4.4), xcP3(70, -4.4)
+    blk.AddLine xcP3(46, -17.6), xcP3(70, -17.6)
+    blk.AddLine xcP3(46, -13.2), xcP3(70, -13.2)
+    blk.AddLine xcP3(46, -8.8), xcP3(70, -8.8)
+    blk.AddLine xcP3(11, -30.8), xcP3(70, -30.8)
+    blk.AddLine xcP3(0, -13.2), xcP3(35, -13.2)
 
     ' --- 고정 문자 41개 ---
-    Set e = blk.AddText("2", P3(68.89244, -28.401175), 1)
-    e.Alignment = 10: e.TextAlignmentPoint = P3(69.16478, -27.901175)
-    Set e = blk.AddText("m", P3(67.096308, -29.7), 2.2)
-    e.Alignment = 10: e.TextAlignmentPoint = P3(67.695457, -28.6)
-    Set e = blk.AddText("m", P3(67.096308, -20.9), 2.2)
-    e.Alignment = 10: e.TextAlignmentPoint = P3(67.695457, -19.8)
-    Set e = blk.AddText("2", P3(68.89244, -24.001175), 1)
-    e.Alignment = 10: e.TextAlignmentPoint = P3(69.16478, -23.501175)
-    Set e = blk.AddText("m", P3(67.096308, -25.3), 2.2)
-    e.Alignment = 10: e.TextAlignmentPoint = P3(67.695457, -24.2)
-    Set e = blk.AddText("m", P3(67.062365, -12.1), 2.2)
-    e.Alignment = 10: e.TextAlignmentPoint = P3(67.661514, -11)
-    Set e = blk.AddText("m", P3(67.096308, -7.7), 2.2)
-    e.Alignment = 10: e.TextAlignmentPoint = P3(67.695457, -6.6)
-    Set e = blk.AddText("보  조  기  층", P3(37.611915, -29.7), 2.2)
-    e.Alignment = 10: e.TextAlignmentPoint = P3(46, -28.6)
-    Set e = blk.AddText("2", P3(33.89244, -32.801175), 1)
-    e.Alignment = 10: e.TextAlignmentPoint = P3(34.16478, -32.301175)
-    Set e = blk.AddText("2", P3(33.89244, -28.401175), 1)
-    e.Alignment = 10: e.TextAlignmentPoint = P3(34.16478, -27.901175)
-    Set e = blk.AddText("모  래  부  설", P3(37.611915, -25.3), 2.2)
-    e.Alignment = 10: e.TextAlignmentPoint = P3(46, -24.2)
-    Set e = blk.AddText("파 취", P3(37.504255, -9.760025), 2.2)
-    e.Alignment = 10: e.TextAlignmentPoint = P3(40.5, -8.660025)
-    Set e = blk.AddText("및", P3(39.249388, -14.270877), 2.2)
-    e.Alignment = 10: e.TextAlignmentPoint = P3(40.447686, -13.170877)
-    Set e = blk.AddText("복 구", P3(37.504255, -18.560025), 2.2)
-    e.Alignment = 10: e.TextAlignmentPoint = P3(40.5, -17.460025)
-    Set e = blk.AddText("2", P3(33.89244, -24.001175), 1)
-    e.Alignment = 10: e.TextAlignmentPoint = P3(34.16478, -23.501175)
-    Set e = blk.AddText("2", P3(33.89244, -19.601175), 1)
-    e.Alignment = 10: e.TextAlignmentPoint = P3(34.16478, -19.101175)
-    Set e = blk.AddText("Con'C", P3(48.504255, -12.1), 2.2)
-    e.Alignment = 10: e.TextAlignmentPoint = P3(51.5, -11)
-    Set e = blk.AddText("보도블럭", P3(46.706809, -20.9), 2.2)
-    e.Alignment = 10: e.TextAlignmentPoint = P3(51.5, -19.8)
-    Set e = blk.AddText("A.S.P", P3(48.504255, -7.7), 2.2)
-    e.Alignment = 10: e.TextAlignmentPoint = P3(51.5, -6.6)
-    Set e = blk.AddText("m", P3(32.096308, -34.1), 2.2)
-    e.Alignment = 10: e.TextAlignmentPoint = P3(32.695457, -33)
-    Set e = blk.AddText("m", P3(32.096308, -29.7), 2.2)
-    e.Alignment = 10: e.TextAlignmentPoint = P3(32.695457, -28.6)
-    Set e = blk.AddText("m", P3(32.096308, -20.9), 2.2)
-    e.Alignment = 10: e.TextAlignmentPoint = P3(32.695457, -19.8)
-    Set e = blk.AddText("m", P3(32.096308, -25.3), 2.2)
-    e.Alignment = 10: e.TextAlignmentPoint = P3(32.695457, -24.2)
-    Set e = blk.AddText("m", P3(32.096308, -12.1), 2.2)
-    e.Alignment = 10: e.TextAlignmentPoint = P3(32.695457, -11)
-    Set e = blk.AddText("m", P3(32.096308, -7.7), 2.2)
-    e.Alignment = 10: e.TextAlignmentPoint = P3(32.695457, -6.6)
-    Set e = blk.AddText("측 점 : No.", P3(3.082443, -3.3), 2.2)
-    e.Alignment = 10: e.TextAlignmentPoint = P3(11.320741, -2.2)
-    Set e = blk.AddText("관상단", P3(12.905106, -34.1), 2.2)
-    e.Alignment = 10: e.TextAlignmentPoint = P3(16.5, -33)
-    Set e = blk.AddText("관주위", P3(12.905106, -29.7), 2.2)
-    e.Alignment = 10: e.TextAlignmentPoint = P3(16.5, -28.6)
-    Set e = blk.AddText("용 수", P3(13.504255, -25.3), 2.2)
-    e.Alignment = 10: e.TextAlignmentPoint = P3(16.5, -24.2)
-    Set e = blk.AddText("관   저   고", P3(3.810213, -12.1), 2.2)
-    e.Alignment = 10: e.TextAlignmentPoint = P3(11, -11)
-    Set e = blk.AddText("지   반   고", P3(3.810213, -7.7), 2.2)
-    e.Alignment = 10: e.TextAlignmentPoint = P3(11, -6.6)
-    Set e = blk.AddText("육 상", P3(13.504255, -20.9), 2.2)
-    e.Alignment = 10: e.TextAlignmentPoint = P3(16.5, -19.8)
-    Set e = blk.AddText("되메우기", P3(0.706809, -31.9), 2.2)
-    e.Alignment = 10: e.TextAlignmentPoint = P3(5.5, -30.8)
-    Set e = blk.AddText("터 파 기", P3(0.706809, -23.1), 2.2)
-    e.Alignment = 10: e.TextAlignmentPoint = P3(5.5, -22)
-    Set e = blk.AddText("m", P3(67.062365, -16.5), 2.2)
-    e.Alignment = 10: e.TextAlignmentPoint = P3(67.661514, -15.4)
-    Set e = blk.AddText("A.S.C", P3(48.504255, -16.5), 2.2)
-    e.Alignment = 10: e.TextAlignmentPoint = P3(51.5, -15.4)
-    Set e = blk.AddText("2", P3(68.89244, -32.801175), 1)
-    e.Alignment = 10: e.TextAlignmentPoint = P3(69.16478, -32.301175)
-    Set e = blk.AddText("m", P3(67.096308, -34.1), 2.2)
-    e.Alignment = 10: e.TextAlignmentPoint = P3(67.695457, -33)
-    Set e = blk.AddText("동 상 방 지 층", P3(37.611915, -34.1), 2.2)
-    e.Alignment = 10: e.TextAlignmentPoint = P3(46, -33)
-    Set e = blk.AddText("m", P3(32.096308, -16.5), 2.2)
-    e.Alignment = 10: e.TextAlignmentPoint = P3(32.695457, -15.4)
-    Set e = blk.AddText("토   피   고", P3(3.810213, -16.5), 2.2)
-    e.Alignment = 10: e.TextAlignmentPoint = P3(11, -15.4)
+    Set e = blk.AddText("2", xcP3(68.89244, -28.401175), 1)
+    e.Alignment = 10: e.TextAlignmentPoint = xcP3(69.16478, -27.901175)
+    Set e = blk.AddText("m", xcP3(67.096308, -29.7), 2.2)
+    e.Alignment = 10: e.TextAlignmentPoint = xcP3(67.695457, -28.6)
+    Set e = blk.AddText("m", xcP3(67.096308, -20.9), 2.2)
+    e.Alignment = 10: e.TextAlignmentPoint = xcP3(67.695457, -19.8)
+    Set e = blk.AddText("2", xcP3(68.89244, -24.001175), 1)
+    e.Alignment = 10: e.TextAlignmentPoint = xcP3(69.16478, -23.501175)
+    Set e = blk.AddText("m", xcP3(67.096308, -25.3), 2.2)
+    e.Alignment = 10: e.TextAlignmentPoint = xcP3(67.695457, -24.2)
+    Set e = blk.AddText("m", xcP3(67.062365, -12.1), 2.2)
+    e.Alignment = 10: e.TextAlignmentPoint = xcP3(67.661514, -11)
+    Set e = blk.AddText("m", xcP3(67.096308, -7.7), 2.2)
+    e.Alignment = 10: e.TextAlignmentPoint = xcP3(67.695457, -6.6)
+    Set e = blk.AddText("보  조  기  층", xcP3(37.611915, -29.7), 2.2)
+    e.Alignment = 10: e.TextAlignmentPoint = xcP3(46, -28.6)
+    Set e = blk.AddText("2", xcP3(33.89244, -32.801175), 1)
+    e.Alignment = 10: e.TextAlignmentPoint = xcP3(34.16478, -32.301175)
+    Set e = blk.AddText("2", xcP3(33.89244, -28.401175), 1)
+    e.Alignment = 10: e.TextAlignmentPoint = xcP3(34.16478, -27.901175)
+    Set e = blk.AddText("모  래  부  설", xcP3(37.611915, -25.3), 2.2)
+    e.Alignment = 10: e.TextAlignmentPoint = xcP3(46, -24.2)
+    Set e = blk.AddText("파 취", xcP3(37.504255, -9.760025), 2.2)
+    e.Alignment = 10: e.TextAlignmentPoint = xcP3(40.5, -8.660025)
+    Set e = blk.AddText("및", xcP3(39.249388, -14.270877), 2.2)
+    e.Alignment = 10: e.TextAlignmentPoint = xcP3(40.447686, -13.170877)
+    Set e = blk.AddText("복 구", xcP3(37.504255, -18.560025), 2.2)
+    e.Alignment = 10: e.TextAlignmentPoint = xcP3(40.5, -17.460025)
+    Set e = blk.AddText("2", xcP3(33.89244, -24.001175), 1)
+    e.Alignment = 10: e.TextAlignmentPoint = xcP3(34.16478, -23.501175)
+    Set e = blk.AddText("2", xcP3(33.89244, -19.601175), 1)
+    e.Alignment = 10: e.TextAlignmentPoint = xcP3(34.16478, -19.101175)
+    Set e = blk.AddText("Con'C", xcP3(48.504255, -12.1), 2.2)
+    e.Alignment = 10: e.TextAlignmentPoint = xcP3(51.5, -11)
+    Set e = blk.AddText("보도블럭", xcP3(46.706809, -20.9), 2.2)
+    e.Alignment = 10: e.TextAlignmentPoint = xcP3(51.5, -19.8)
+    Set e = blk.AddText("A.S.P", xcP3(48.504255, -7.7), 2.2)
+    e.Alignment = 10: e.TextAlignmentPoint = xcP3(51.5, -6.6)
+    Set e = blk.AddText("m", xcP3(32.096308, -34.1), 2.2)
+    e.Alignment = 10: e.TextAlignmentPoint = xcP3(32.695457, -33)
+    Set e = blk.AddText("m", xcP3(32.096308, -29.7), 2.2)
+    e.Alignment = 10: e.TextAlignmentPoint = xcP3(32.695457, -28.6)
+    Set e = blk.AddText("m", xcP3(32.096308, -20.9), 2.2)
+    e.Alignment = 10: e.TextAlignmentPoint = xcP3(32.695457, -19.8)
+    Set e = blk.AddText("m", xcP3(32.096308, -25.3), 2.2)
+    e.Alignment = 10: e.TextAlignmentPoint = xcP3(32.695457, -24.2)
+    Set e = blk.AddText("m", xcP3(32.096308, -12.1), 2.2)
+    e.Alignment = 10: e.TextAlignmentPoint = xcP3(32.695457, -11)
+    Set e = blk.AddText("m", xcP3(32.096308, -7.7), 2.2)
+    e.Alignment = 10: e.TextAlignmentPoint = xcP3(32.695457, -6.6)
+    Set e = blk.AddText("측 점 : No.", xcP3(3.082443, -3.3), 2.2)
+    e.Alignment = 10: e.TextAlignmentPoint = xcP3(11.320741, -2.2)
+    Set e = blk.AddText("관상단", xcP3(12.905106, -34.1), 2.2)
+    e.Alignment = 10: e.TextAlignmentPoint = xcP3(16.5, -33)
+    Set e = blk.AddText("관주위", xcP3(12.905106, -29.7), 2.2)
+    e.Alignment = 10: e.TextAlignmentPoint = xcP3(16.5, -28.6)
+    Set e = blk.AddText("용 수", xcP3(13.504255, -25.3), 2.2)
+    e.Alignment = 10: e.TextAlignmentPoint = xcP3(16.5, -24.2)
+    Set e = blk.AddText("관   저   고", xcP3(3.810213, -12.1), 2.2)
+    e.Alignment = 10: e.TextAlignmentPoint = xcP3(11, -11)
+    Set e = blk.AddText("지   반   고", xcP3(3.810213, -7.7), 2.2)
+    e.Alignment = 10: e.TextAlignmentPoint = xcP3(11, -6.6)
+    Set e = blk.AddText("육 상", xcP3(13.504255, -20.9), 2.2)
+    e.Alignment = 10: e.TextAlignmentPoint = xcP3(16.5, -19.8)
+    Set e = blk.AddText("되메우기", xcP3(0.706809, -31.9), 2.2)
+    e.Alignment = 10: e.TextAlignmentPoint = xcP3(5.5, -30.8)
+    Set e = blk.AddText("터 파 기", xcP3(0.706809, -23.1), 2.2)
+    e.Alignment = 10: e.TextAlignmentPoint = xcP3(5.5, -22)
+    Set e = blk.AddText("m", xcP3(67.062365, -16.5), 2.2)
+    e.Alignment = 10: e.TextAlignmentPoint = xcP3(67.661514, -15.4)
+    Set e = blk.AddText("A.S.C", xcP3(48.504255, -16.5), 2.2)
+    e.Alignment = 10: e.TextAlignmentPoint = xcP3(51.5, -15.4)
+    Set e = blk.AddText("2", xcP3(68.89244, -32.801175), 1)
+    e.Alignment = 10: e.TextAlignmentPoint = xcP3(69.16478, -32.301175)
+    Set e = blk.AddText("m", xcP3(67.096308, -34.1), 2.2)
+    e.Alignment = 10: e.TextAlignmentPoint = xcP3(67.695457, -33)
+    Set e = blk.AddText("동 상 방 지 층", xcP3(37.611915, -34.1), 2.2)
+    e.Alignment = 10: e.TextAlignmentPoint = xcP3(46, -33)
+    Set e = blk.AddText("m", xcP3(32.096308, -16.5), 2.2)
+    e.Alignment = 10: e.TextAlignmentPoint = xcP3(32.695457, -15.4)
+    Set e = blk.AddText("토   피   고", xcP3(3.810213, -16.5), 2.2)
+    e.Alignment = 10: e.TextAlignmentPoint = xcP3(11, -15.4)
 
     ' --- 속성 정의 15개 ---
-    Set at = blk.AddAttribute(2.2, 0, "측점", P3(22.356755, -2.2), "측점", "")
-    at.Alignment = 9: at.TextAlignmentPoint = P3(22.356755, -2.2)
-    Set at = blk.AddAttribute(2.2, 0, "지반고", P3(31, -6.6), "지반고", "")
-    at.Alignment = 11: at.TextAlignmentPoint = P3(31, -6.6)
-    Set at = blk.AddAttribute(2.2, 0, "관저고", P3(31, -11), "관저고", "")
-    at.Alignment = 11: at.TextAlignmentPoint = P3(31, -11)
-    Set at = blk.AddAttribute(2.2, 0, "토피", P3(31, -15.4), "토피", "")
-    at.Alignment = 11: at.TextAlignmentPoint = P3(31, -15.4)
-    Set at = blk.AddAttribute(2.2, 0, "터파기(육상)합계", P3(31, -19.8), "터파기(육상)합계", "")
-    at.Alignment = 11: at.TextAlignmentPoint = P3(31, -19.8)
-    Set at = blk.AddAttribute(2.2, 0, "터파기(용수)합계", P3(31, -24.2), "터파기(용수)합계", "")
-    at.Alignment = 11: at.TextAlignmentPoint = P3(31, -24.2)
-    Set at = blk.AddAttribute(2.2, 0, "되메우기(관주위)", P3(31, -28.6), "되메우기(관주위)", "")
-    at.Alignment = 11: at.TextAlignmentPoint = P3(31, -28.6)
-    Set at = blk.AddAttribute(2.2, 0, "되메우기(관상단)", P3(31, -33), "되메우기(관상단)", "")
-    at.Alignment = 11: at.TextAlignmentPoint = P3(31, -33)
-    Set at = blk.AddAttribute(2.2, 0, "ASP포장", P3(66, -6.6), "ASP포장", "")
-    at.Alignment = 11: at.TextAlignmentPoint = P3(66, -6.6)
-    Set at = blk.AddAttribute(2.2, 0, "CONC포장", P3(66, -11), "CONC포장", "")
-    at.Alignment = 11: at.TextAlignmentPoint = P3(66, -11)
-    Set at = blk.AddAttribute(2.2, 0, "ASC포장", P3(66, -15.4), "ASC포장", "")
-    at.Alignment = 11: at.TextAlignmentPoint = P3(66, -15.4)
-    Set at = blk.AddAttribute(2.2, 0, "보도블럭포장", P3(66, -19.8), "보도블럭포장", "")
-    at.Alignment = 11: at.TextAlignmentPoint = P3(66, -19.8)
-    Set at = blk.AddAttribute(2.2, 0, "되메우기(모래)", P3(66, -24.2), "되메우기(모래)", "")
-    at.Alignment = 11: at.TextAlignmentPoint = P3(66, -24.2)
-    Set at = blk.AddAttribute(2.2, 0, "보조기층", P3(66, -28.6), "보조기층", "")
-    at.Alignment = 11: at.TextAlignmentPoint = P3(66, -28.6)
-    Set at = blk.AddAttribute(2.2, 0, "동상방지층", P3(66, -33), "동상방지층", "")
-    at.Alignment = 11: at.TextAlignmentPoint = P3(66, -33)
+    Set at = blk.AddAttribute(2.2, 0, "측점", xcP3(22.356755, -2.2), "측점", "")
+    at.Alignment = 9: at.TextAlignmentPoint = xcP3(22.356755, -2.2)
+    Set at = blk.AddAttribute(2.2, 0, "지반고", xcP3(31, -6.6), "지반고", "")
+    at.Alignment = 11: at.TextAlignmentPoint = xcP3(31, -6.6)
+    Set at = blk.AddAttribute(2.2, 0, "관저고", xcP3(31, -11), "관저고", "")
+    at.Alignment = 11: at.TextAlignmentPoint = xcP3(31, -11)
+    Set at = blk.AddAttribute(2.2, 0, "토피", xcP3(31, -15.4), "토피", "")
+    at.Alignment = 11: at.TextAlignmentPoint = xcP3(31, -15.4)
+    Set at = blk.AddAttribute(2.2, 0, "터파기(육상)합계", xcP3(31, -19.8), "터파기(육상)합계", "")
+    at.Alignment = 11: at.TextAlignmentPoint = xcP3(31, -19.8)
+    Set at = blk.AddAttribute(2.2, 0, "터파기(용수)합계", xcP3(31, -24.2), "터파기(용수)합계", "")
+    at.Alignment = 11: at.TextAlignmentPoint = xcP3(31, -24.2)
+    Set at = blk.AddAttribute(2.2, 0, "되메우기(관주위)", xcP3(31, -28.6), "되메우기(관주위)", "")
+    at.Alignment = 11: at.TextAlignmentPoint = xcP3(31, -28.6)
+    Set at = blk.AddAttribute(2.2, 0, "되메우기(관상단)", xcP3(31, -33), "되메우기(관상단)", "")
+    at.Alignment = 11: at.TextAlignmentPoint = xcP3(31, -33)
+    Set at = blk.AddAttribute(2.2, 0, "ASP포장", xcP3(66, -6.6), "ASP포장", "")
+    at.Alignment = 11: at.TextAlignmentPoint = xcP3(66, -6.6)
+    Set at = blk.AddAttribute(2.2, 0, "CONC포장", xcP3(66, -11), "CONC포장", "")
+    at.Alignment = 11: at.TextAlignmentPoint = xcP3(66, -11)
+    Set at = blk.AddAttribute(2.2, 0, "ASC포장", xcP3(66, -15.4), "ASC포장", "")
+    at.Alignment = 11: at.TextAlignmentPoint = xcP3(66, -15.4)
+    Set at = blk.AddAttribute(2.2, 0, "보도블럭포장", xcP3(66, -19.8), "보도블럭포장", "")
+    at.Alignment = 11: at.TextAlignmentPoint = xcP3(66, -19.8)
+    Set at = blk.AddAttribute(2.2, 0, "되메우기(모래)", xcP3(66, -24.2), "되메우기(모래)", "")
+    at.Alignment = 11: at.TextAlignmentPoint = xcP3(66, -24.2)
+    Set at = blk.AddAttribute(2.2, 0, "보조기층", xcP3(66, -28.6), "보조기층", "")
+    at.Alignment = 11: at.TextAlignmentPoint = xcP3(66, -28.6)
+    Set at = blk.AddAttribute(2.2, 0, "동상방지층", xcP3(66, -33), "동상방지층", "")
+    at.Alignment = 11: at.TextAlignmentPoint = xcP3(66, -33)
 End Sub
 
 ' 도면번호(표제란) : 속성 8개 (원본은 도곽 XREF 위에 이 속성만 얹는다)
@@ -2293,23 +2293,23 @@ Public Sub CreateTitleBlock()
     Dim blk As Object, at As Object
     If BlockExists(pBlkTitle) Then Exit Sub
     On Error Resume Next
-    Set blk = doc.Blocks.Add(P3(0#, 0#), pBlkTitle)
+    Set blk = doc.Blocks.Add(xcP3(0#, 0#), pBlkTitle)
     If Err.Number <> 0 Then Err.Clear: Exit Sub
     On Error GoTo 0
-    Set at = blk.AddAttribute(10, 0, "도면타이틀", P3(427.500001, 542.868645), "도면타이틀", "")
-    at.Alignment = 10: at.TextAlignmentPoint = P3(427.500001, 542.868645)
-    Set at = blk.AddAttribute(6.5, 0, "축척H", P3(492.871031, 527.350497), "축척H", "")
-    Set at = blk.AddAttribute(6.5, 0, "축척V", P3(492.871031, 517.192082), "축척V", "")
-    Set at = blk.AddAttribute(5, 0, "도면명", P3(626.615558, 37.442484), "도면명", "")
-    at.Alignment = 10: at.TextAlignmentPoint = P3(626.615558, 37.442484)
-    Set at = blk.AddAttribute(2, 0, "축척A1", P3(792.517503, 46.982608), "축척A1", "")
-    at.Alignment = 10: at.TextAlignmentPoint = P3(792.517503, 46.982608)
-    Set at = blk.AddAttribute(2, 0, "SNO1", P3(785.985244, 37.633705), "SNO1", "")
-    at.Alignment = 10: at.TextAlignmentPoint = P3(785.985244, 37.633705)
-    Set at = blk.AddAttribute(2, 0, "SNO2", P3(799.107836, 37.633705), "SNO2", "")
-    at.Alignment = 10: at.TextAlignmentPoint = P3(799.107836, 37.633705)
-    Set at = blk.AddAttribute(3, 0, "도면번호", P3(777.854994, 28.706447), "도면번호", "")
-    at.Alignment = 10: at.TextAlignmentPoint = P3(777.854994, 28.706447)
+    Set at = blk.AddAttribute(10, 0, "도면타이틀", xcP3(427.500001, 542.868645), "도면타이틀", "")
+    at.Alignment = 10: at.TextAlignmentPoint = xcP3(427.500001, 542.868645)
+    Set at = blk.AddAttribute(6.5, 0, "축척H", xcP3(492.871031, 527.350497), "축척H", "")
+    Set at = blk.AddAttribute(6.5, 0, "축척V", xcP3(492.871031, 517.192082), "축척V", "")
+    Set at = blk.AddAttribute(5, 0, "도면명", xcP3(626.615558, 37.442484), "도면명", "")
+    at.Alignment = 10: at.TextAlignmentPoint = xcP3(626.615558, 37.442484)
+    Set at = blk.AddAttribute(2, 0, "축척A1", xcP3(792.517503, 46.982608), "축척A1", "")
+    at.Alignment = 10: at.TextAlignmentPoint = xcP3(792.517503, 46.982608)
+    Set at = blk.AddAttribute(2, 0, "SNO1", xcP3(785.985244, 37.633705), "SNO1", "")
+    at.Alignment = 10: at.TextAlignmentPoint = xcP3(785.985244, 37.633705)
+    Set at = blk.AddAttribute(2, 0, "SNO2", xcP3(799.107836, 37.633705), "SNO2", "")
+    at.Alignment = 10: at.TextAlignmentPoint = xcP3(799.107836, 37.633705)
+    Set at = blk.AddAttribute(3, 0, "도면번호", xcP3(777.854994, 28.706447), "도면번호", "")
+    at.Alignment = 10: at.TextAlignmentPoint = xcP3(777.854994, 28.706447)
 End Sub
 
 ' HDot : 치수 보조점 (폭 1.0 의 짧은 선, 삽입축척 0.02)
@@ -2319,7 +2319,7 @@ Public Sub CreateDotBlock()
     If BlockExists(pBlkDot) Then Exit Sub
     If Len(pBlkDot) = 0 Then Exit Sub
     On Error Resume Next
-    Set blk = doc.Blocks.Add(P3(0#, 0#), pBlkDot)
+    Set blk = doc.Blocks.Add(xcP3(0#, 0#), pBlkDot)
     If Err.Number <> 0 Then Err.Clear: Exit Sub
     a0(0) = 0.5: a0(1) = 0#: a0(2) = -0.5: a0(3) = 0#
     Set e = blk.AddLightWeightPolyline(a0)
