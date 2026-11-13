@@ -215,4 +215,79 @@ else:
 print("\n=== 5. Option Explicit 대비 미선언 식별자(휴리스틱) ===")
 print("  (건너뜀 — Excel 에서 'Debug > Compile' 로 확인 권장)")
 
-print(f"\n프로시저 {len(defined)}개 / 발견 문제 {len(issues)+len(dups)+bad+len(missing)}건")
+
+# ---- 6. 모듈레벨 선언의 위치 (VBA '선언부' 규칙) ----
+# VBA 는 모듈 레벨 Const/Dim/Type/Enum/Declare 를 '모든 프로시저보다 앞'에만 둘 수 있다.
+# 프로시저 사이에 놓이면 컴파일 시 인식되지 않아, 그 이름을 쓰는 곳에서
+# "컴파일 오류입니다: 변수가 정의되지 않았습니다" 가 발생한다.
+# (v2.1 에서 AL_* 상수 5개가 xcPolyA 뒤에 놓여 이 오류가 났다)
+#
+# 핵심: 줄번호 순서로 판정하면 프로시저 '내부'의 지역 Dim 까지 걸린다(오탐).
+#       따라서 프로시저 본문 안/밖을 추적해서 '본문 밖' 선언만 검사한다.
+print("\n=== 6. 모듈레벨 선언 위치 (선언부 규칙) ===")
+
+PROC_START = re.compile(
+    r"^\s*(?:Public\s+|Private\s+|Friend\s+|Global\s+)?(?:Static\s+)?"
+    r"(?:Sub|Function)\s+[^\s(]"
+    r"|^\s*(?:Public\s+|Private\s+|Friend\s+)?Property\s+(?:Get|Let|Set)\s+", re.I)
+PROC_END = re.compile(r"^\s*End\s+(?:Sub|Function|Property)\b", re.I)
+
+DECL_RE = re.compile(
+    r"^\s*(?:Public\s+|Private\s+|Friend\s+|Global\s+)?"
+    r"(?:Const|Dim|Static|Declare)\b"
+    r"|^\s*(?:Public\s+|Private\s+)?(?:Type|Enum)\s+\w+",
+    re.I)
+decl_name = re.compile(
+    r"^\s*(?:Public\s+|Private\s+|Friend\s+|Global\s+)?"
+    r"(?:Const|Dim|Static|Declare)\s+([A-Za-z_]\w*)", re.I)
+
+in_proc = False
+first_proc_ln = None
+misplaced = []        # 본문 밖 + 첫 프로시저 이후에 놓인 모듈레벨 선언
+modlevel = []         # (행, 텍스트, 이름) — 진짜 모듈레벨 선언만
+for ln, s in zip(lnos, code):
+    if PROC_START.match(s):
+        if first_proc_ln is None:
+            first_proc_ln = ln
+        in_proc = True
+        continue
+    if PROC_END.match(s):
+        in_proc = False
+        continue
+    if in_proc:
+        continue                       # 프로시저 본문 내부 -> 지역 선언, 검사 대상 아님
+    if DECL_RE.match(s):
+        m = decl_name.match(s)
+        nm = m.group(1).lower() if m else None
+        modlevel.append((ln, s.strip(), nm))
+        if first_proc_ln is not None:  # 이미 프로시저가 나온 뒤 = 선언부 아님
+            misplaced.append((ln, s.strip()))
+
+# 같은 이름이 선언부에서 두 번 선언되었는지 (중복 정의 -> 컴파일 오류)
+# 지역변수는 프로시저마다 독립이므로 위에서 이미 제외된다.
+dupe_decl = []
+seen_decl = {}
+for ln, _t, nm in modlevel:
+    if not nm or ln > (first_proc_ln or 10 ** 9):
+        continue
+    if nm in seen_decl:
+        dupe_decl.append((nm, seen_decl[nm], ln))
+    else:
+        seen_decl[nm] = ln
+
+if misplaced:
+    for ln, t in misplaced:
+        print(f"  ✗ L{ln}: 프로시저(첫 정의 L{first_proc_ln}) 뒤에 모듈레벨 선언 -> {t}")
+else:
+    print(f"  ✓ 이상 없음 (첫 프로시저 L{first_proc_ln}, 그 뒤 모듈레벨 선언 0건)")
+
+if dupe_decl:
+    for nm, a, b in dupe_decl:
+        print(f"  ✗ 중복 선언 '{nm}': L{a} 와 L{b}")
+else:
+    print("  ✓ 중복 선언 없음")
+
+n_decl_total = len(modlevel)
+
+print(f"\n프로시저 {len(defined)}개 / 모듈레벨 선언 {n_decl_total}개 / "
+      f"발견 문제 {len(issues)+len(dups)+bad+len(missing)+len(misplaced)+len(dupe_decl)}건")

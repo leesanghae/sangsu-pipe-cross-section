@@ -17,10 +17,20 @@ Option Explicit
 '=====================================================================================
 
 '────────────────────────── 0. 상수 ──────────────────────────
+' [중요] 모듈 레벨 Const/Dim/Type/Enum 은 반드시 '선언부'(모든 프로시저 앞)에만 둔다.
+'        프로시저 사이에 놓으면 VBA 가 인식하지 못해
+'        "컴파일 오류: 변수가 정의되지 않았습니다" 가 발생한다. (v2.2 수정)
 Private Const PSHEET As String = "P"
 Private Const VSHEET As String = "검토_검증"
 Private Const PI As Double = 3.14159265358979
 Private Const TINY As Double = 0.0000001
+
+' AL_* : 문자 정렬 (AcText.Alignment 값)  0=좌하  9=중앙좌  10=중앙중심  11=중앙우  13=하중앙
+Private Const AL_LEFT As Long = 0
+Private Const AL_MLFT As Long = 9
+Private Const AL_MCTR As Long = 10
+Private Const AL_MRGT As Long = 11
+Private Const AL_BCTR As Long = 13
 
 '────────────────────────── 1. 단면 데이터 ──────────────────────────
 Private sN As Long
@@ -714,17 +724,10 @@ Private Function xcPolyA(ByRef a() As Double, ByVal n As Long, ByVal lay As Stri
     Set xcPolyA = e
 End Function
 
-' AL_* : 0=좌하  9=중앙좌  10=중앙중심  11=중앙우  13=하중앙
-Private Const AL_LEFT As Long = 0
-Private Const AL_MLFT As Long = 9
-Private Const AL_MCTR As Long = 10
-Private Const AL_MRGT As Long = 11
-Private Const AL_BCTR As Long = 13
-
 Private Function xcText(ByVal s As String, ByVal x As Double, ByVal y As Double, _
                          ByVal h As Double, ByVal lay As String, _
                          Optional ByVal rot As Double = 0#, _
-                         Optional ByVal al As Long = AL_LEFT, _
+                         Optional ByVal al As Long = 0, _
                          Optional ByVal rotGiven As Boolean = True) As Object
     Dim e As Object
     Set xcText = Nothing
